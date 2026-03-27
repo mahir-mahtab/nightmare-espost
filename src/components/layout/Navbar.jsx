@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { ChevronRight, Menu, X } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
@@ -6,20 +6,9 @@ import { NAV_LINKS } from '../../data/constants.js';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   return (
-    <header
-      className={`fixed top-0 left-0 z-50 w-full transition-all duration-300 ${
-        scrolled ? 'border-b border-white/10 bg-black/95 backdrop-blur-xl' : 'bg-black/60'
-      }`}
-    >
+    <header className="fixed top-0 left-0 z-50 w-full border-b border-primary/20 bg-black/40 backdrop-blur-md shadow-[0_4px_30px_rgba(255,0,0,0.15)]">
       <nav className="mx-auto flex h-24 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
         <Link to="/" className="group flex items-center gap-3">
           <div className="relative">

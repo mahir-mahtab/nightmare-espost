@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage.jsx';
 import TeamsPage from './pages/TeamsPage.jsx';
 import AchievementsPage from './pages/AchievementsPage.jsx';
@@ -12,7 +12,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
-        <Route path="/events" element={<EventsPage />} />
+        <Route path="/events" element={<Navigate to="/events/event" replace />} />
+        <Route path="/events/:tab" element={<EventsPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>

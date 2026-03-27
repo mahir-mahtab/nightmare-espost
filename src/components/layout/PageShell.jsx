@@ -2,11 +2,11 @@ import { motion as Motion } from 'framer-motion';
 import { Navbar, Footer, FeaturedEventBanner } from './index.jsx';
 import { GlitchText } from '../ui/index.jsx';
 
-const PageShell = ({ children, title, subtitle, accent }) => (
+const PageShell = ({ children, title, subtitle, accent, subHeader }) => (
   <div className="min-h-screen bg-black text-white">
     <Navbar />
     <main className="pt-24">
-      <FeaturedEventBanner />
+      {subHeader}
       <section className="relative overflow-hidden px-6 pb-12 pt-12 md:pt-16">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,0,0,0.1),transparent_50%)]" />
         <div className="relative mx-auto max-w-7xl">

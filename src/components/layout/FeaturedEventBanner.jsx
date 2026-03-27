@@ -19,7 +19,7 @@ const FeaturedEventBanner = () => (
         <span className="hidden text-sm text-white/50 md:inline">{TOURNAMENT_DATA.slots} Slots • {TOURNAMENT_DATA.season}</span>
       </div>
       <Link
-        to="/events"
+        to="/events/event"
         className="group flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] text-primary uppercase transition-colors hover:text-white"
       >
         View Details

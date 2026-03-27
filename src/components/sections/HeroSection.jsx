@@ -22,12 +22,6 @@ const HeroSection = () => (
         transition={{ duration: 0.6 }}
         className="space-y-8"
       >
-        <div className="inline-flex items-center gap-3 border border-primary/30 bg-primary/5 px-4 py-2">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-          <span className="text-[10px] font-bold tracking-[0.4em] text-primary uppercase">
-            Powering Esports Networks
-          </span>
-        </div>
 
         <h1 className="font-display text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
           <GlitchText>Nightmare</GlitchText>

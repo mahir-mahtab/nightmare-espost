@@ -13,7 +13,6 @@ const LandingPage = () => (
   <div className="min-h-screen bg-black text-white">
     <Navbar />
     <main className="pt-24">
-      <FeaturedEventBanner />
       <HeroSection />
       <StatsSection />
       <AchievementsSection />
