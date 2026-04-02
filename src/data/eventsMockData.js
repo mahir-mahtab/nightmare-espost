@@ -1,9 +1,9 @@
 export const EVENT_ROUTE_TABS = [
-  { id: 'event', label: 'Event', path: '/events/event' },
-  { id: 'team', label: 'Team', path: '/events/team' },
-  { id: 'players', label: 'Players', path: '/events/players' },
-  { id: 'auction', label: 'Auction', path: '/events/auction', badge: 'Live' },
-  { id: 'players-buy', label: 'Players Buy', path: '/events/players-buy' },
+  { id: 'event', label: 'Overview', path: '/events/event' },
+  { id: 'team', label: 'Teams', path: '/events/team' },
+  { id: 'players', label: 'Available', path: '/events/players' },
+  { id: 'auction', label: 'Selection', path: '/events/auction', badge: 'Live' },
+  { id: 'players-buy', label: 'Purchase', path: '/events/players-buy' },
 ];
 
 export const EVENT_SUMMARY = {
@@ -23,7 +23,7 @@ export const TEAM_CARDS = [
   {
     id: 't1',
     name: 'KongKaaL Gaming',
-    ownerName: 'Streamer Rafi',
+    ownerName: 'Rafi',
     ownerAvatar: 'https://images.unsplash.com/photo-1615109398623-88346a601842?w=200&h=200&fit=crop',
     roster: [
       'https://images.unsplash.com/photo-1586042091284-bd35c8c1d917?w=100&h=100&fit=crop',
@@ -36,7 +36,7 @@ export const TEAM_CARDS = [
   {
     id: 't2',
     name: 'Ghost Vortex',
-    ownerName: 'Streamer Alif',
+    ownerName: 'Alif',
     ownerAvatar: 'https://images.unsplash.com/photo-1628890920690-9e29d001f7f6?w=200&h=200&fit=crop',
     roster: [
       'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop',
@@ -49,7 +49,7 @@ export const TEAM_CARDS = [
   {
     id: 't3',
     name: 'Neon Falcons',
-    ownerName: 'Streamer Nibir',
+    ownerName: 'Nibir',
     ownerAvatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop',
     roster: [
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
@@ -62,7 +62,7 @@ export const TEAM_CARDS = [
   {
     id: 't4',
     name: 'Raven Battalion',
-    ownerName: 'Streamer Mishu',
+    ownerName: 'Mishu',
     ownerAvatar: 'https://images.unsplash.com/photo-1546961329-78bef0414d7c?w=200&h=200&fit=crop',
     roster: [
       'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop',
@@ -75,7 +75,7 @@ export const TEAM_CARDS = [
   {
     id: 't5',
     name: 'Blaze Syndicate',
-    ownerName: 'Streamer Tonmoy',
+    ownerName: 'Tonmoy',
     ownerAvatar: 'https://images.unsplash.com/photo-1629747490241-624f07d70e1e?w=200&h=200&fit=crop',
     roster: [
       'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?w=100&h=100&fit=crop',
@@ -88,7 +88,7 @@ export const TEAM_CARDS = [
   {
     id: 't6',
     name: 'Zero Gravity',
-    ownerName: 'Streamer Piash',
+    ownerName: 'Piash',
     ownerAvatar: 'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=200&h=200&fit=crop',
     roster: [
       'https://images.unsplash.com/photo-1545167622-3a6ac756afa4?w=100&h=100&fit=crop',
@@ -194,25 +194,25 @@ export const PLAYERS_POOL = [
 export const OWNERS = [
   {
     id: 'o1',
-    name: 'Owner Shakib',
+    name: 'Shakib',
     teamId: 't1',
     avatar: 'https://images.unsplash.com/photo-1615109398623-88346a601842?w=200&h=200&fit=crop',
   },
   {
     id: 'o2',
-    name: 'Owner Rafi',
+    name: 'Rafi',
     teamId: 't2',
     avatar: 'https://images.unsplash.com/photo-1628890920690-9e29d001f7f6?w=200&h=200&fit=crop',
   },
   {
     id: 'o3',
-    name: 'Owner Mishu',
+    name: 'Mishu',
     teamId: 't3',
     avatar: 'https://images.unsplash.com/photo-1546961329-78bef0414d7c?w=200&h=200&fit=crop',
   },
   {
     id: 'o4',
-    name: 'Owner Tonmoy',
+    name: 'Tonmoy',
     teamId: 't4',
     avatar: 'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=200&h=200&fit=crop',
   },
