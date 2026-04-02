@@ -11,14 +11,13 @@ This document provides coding guidelines and conventions for AI agents working i
 - **Animation:** Framer Motion 12.38.0
 - **Language:** JavaScript (JSX) - **No TypeScript**
 - **Module System:** ES Modules (`"type": "module"`)
-- **Package Managers:** npm or pnpm (both lock files present)
+- **Package Manager:** npm (standardized)
 
 ## Build, Lint, and Test Commands
 
 ### Development
 ```bash
 npm run dev          # Start Vite dev server (default: http://localhost:5173)
-pnpm dev             # Alternative with pnpm
 ```
 
 ### Build
@@ -51,9 +50,11 @@ src/
 │   └── LandingPage.jsx   # Main landing + exported views
 ├── components/           # Reusable components
 │   ├── layout/           # Layout components
-│   └── prototypes/       # Prototype components
+│   ├── routing/          # Route protection components
+│   ├── sections/         # Page sections
+│   └── ui/               # UI components
 ├── data/                 # Static data / constants
-└── assets/               # Images, fonts, etc.
+└── hooks/                # Custom React hooks
 ```
 
 ### Import Conventions
@@ -208,7 +209,7 @@ useEffect(() => {
 
 - `.gitignore` configured for Node.js projects
 - Ignores: `node_modules`, `dist`, logs, editor configs
-- **⚠️ NOT A GIT REPOSITORY** - Initialize with `git init` if needed
+- Repository is initialized and active
 
 ## Best Practices
 

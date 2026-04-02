@@ -83,16 +83,12 @@ esports/
 ### Prerequisites
 
 - Node.js (LTS version recommended)
-- npm or pnpm
+- npm
 
 ### Installation
 
 ```bash
-# Using npm
 npm install
-
-# Using pnpm
-pnpm install
 ```
 
 ### Development
@@ -100,9 +96,6 @@ pnpm install
 ```bash
 # Start development server
 npm run dev
-
-# Alternative with pnpm
-pnpm dev
 ```
 
 The development server runs at `http://localhost:5173` by default.
