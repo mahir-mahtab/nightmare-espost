@@ -1,59 +1,33 @@
-# Agent Instructions for Nightmare Esports Codebase
+# Agent Instructions
 
-This document provides coding guidelines and conventions for AI agents working in this repository.
+React 19 SPA (esports website) - JavaScript only, no TypeScript.
 
-## Project Overview
+## Commands
 
-- **Type:** React 19 Single Page Application (Esports Website)
-- **Build Tool:** Vite 8.0.0
-- **Styling:** Tailwind CSS 4.2.1 with custom theme
-- **Routing:** React Router DOM 7.13.1
-- **Animation:** Framer Motion 12.38.0
-- **Language:** JavaScript (JSX) - **No TypeScript**
-- **Module System:** ES Modules (`"type": "module"`)
-- **Package Managers:** npm or pnpm (both lock files present)
-
-## Build, Lint, and Test Commands
-
-### Development
 ```bash
-npm run dev          # Start Vite dev server (default: http://localhost:5173)
-pnpm dev             # Alternative with pnpm
+npm run dev      # Vite dev server → http://localhost:5173
+npm run build    # Production build → /dist
+npm run preview  # Preview production build
+npm run lint     # ESLint on all .js/.jsx
 ```
 
-### Build
-```bash
-npm run build        # Build for production to /dist
-npm run preview      # Preview production build locally
-```
+**No testing framework** - no Vitest, Jest, or test files exist.
 
-### Linting
-```bash
-npm run lint         # Run ESLint on all .js/.jsx files
-```
-
-### Testing
-**⚠️ NO TESTING FRAMEWORK CONFIGURED**
-- No test runner (Vitest, Jest, etc.) is installed
-- No test files exist in the codebase
-- If adding tests, install Vitest + @testing-library/react first
-
-## Code Style Guidelines
-
-### File and Folder Organization
+## Project Structure
 
 ```
 src/
-├── main.jsx              # App entry point
-├── App.jsx               # Root component with routing
-├── index.css             # Global styles + Tailwind theme
-├── pages/                # Page-level components
-│   └── LandingPage.jsx   # Main landing + exported views
-├── components/           # Reusable components
-│   ├── layout/           # Layout components
-│   └── prototypes/       # Prototype components
-├── data/                 # Static data / constants
-└── assets/               # Images, fonts, etc.
+├── main.jsx              # Entry point
+├── App.jsx               # Router config
+├── index.css             # Global styles + Tailwind @theme
+├── pages/                # Page components (LandingPage, EventsPage, etc.)
+├── components/
+│   ├── layout/           # Navbar, Footer, PageShell
+│   ├── routing/          # ProtectedEventRoute
+│   ├── sections/         # HeroSection, StatsSection, etc.
+│   └── ui/               # GlitchText, CyberCard, etc.
+├── data/                 # constants.js, eventAuthService.js, eventsService.js
+└── hooks/                # Custom hooks
 ```
 
 ### Import Conventions
@@ -140,108 +114,43 @@ className={`text-xs font-bold ${
 - Opacity modifiers: `/10`, `/25`, `/70`, `/90`
 - Custom gradients using arbitrary values
 
-### Type Handling
+### Event Authentication
 
-**⚠️ NO TYPE VALIDATION CONFIGURED**
-- No TypeScript
-- No PropTypes validation
-- No JSDoc comments
-- Consider adding PropTypes if components become complex
+**Event Routes:** Protected by `ProtectedEventRoute` wrapper (see `App.jsx` lines 21-28)
+- Authentication managed by `eventAuthService.js` (localStorage with 8hr TTL)
+- Login flow: `/events/login/:eventId` → `/events/:eventId/:tab`
+- Session storage key: `nm-event-auth:{eventId}`
+- Protected routes redirect to login if session expired/missing
 
-### Error Handling
+## Icons & Animation
 
-**⚠️ NO ERROR HANDLING PATTERNS**
-- No try-catch blocks currently in use
-- No error boundaries implemented
-- No error state management
-- When adding features with potential failures:
-  - Add React error boundaries for component trees
-  - Use try-catch for async operations
-  - Implement error states in components
+- **Icons:** Lucide React 0.577.0 - `import { Calendar } from 'lucide-react'`
+- **Animation:** Framer Motion 12.38.0 - use `<AnimatePresence>` for enter/exit
+- **CSS Animations:** Custom `@keyframes` in `index.css` (glitch, float, marquee)
 
-### State Management
+## ESLint Rules
 
-- **Local State:** Use `useState` for component-local state
-- **No Global State:** No Redux, Zustand, or Context currently
-- **Router State:** Managed by React Router DOM
-- Keep state close to where it's used
-
-### Event Handling
-
-```javascript
-// Preferred: Arrow functions in event handlers
-onClick={() => setIsOpen((prev) => !prev)}
-
-// For cleanup in useEffect:
-useEffect(() => {
-  const handler = () => { /* ... */ };
-  window.addEventListener('scroll', handler);
-  return () => window.removeEventListener('scroll', handler);
-}, []);
-```
-
-### ESLint Rules (Enforced)
-
-- **Base:** `@eslint/js` recommended rules
-- **React Hooks:** Rules for hooks dependencies and usage
-- **React Refresh:** Vite HMR compatibility rules
-- **Custom Rules:**
-  - `no-unused-vars`: Error, except uppercase/underscore variables
-
-**Ignored Patterns:**
-- `dist/` directory
-
-## Animation and Motion
-
-- **Library:** Framer Motion 12.38.0
-- **Component:** `<AnimatePresence>` for enter/exit animations
-- **CSS Animations:** Custom keyframes in index.css (@keyframes glitch, float, marquee)
-- Use Tailwind transition utilities for simple transitions
-
-## Icons
-
-- **Library:** Lucide React 0.577.0
-- Import icons as named exports: `import { Calendar, ChevronRight } from 'lucide-react'`
-- Style with Tailwind: `<Calendar className="h-3.5 w-3.5 text-primary" />`
-
-## Git Workflow
-
-- `.gitignore` configured for Node.js projects
-- Ignores: `node_modules`, `dist`, logs, editor configs
-- **⚠️ NOT A GIT REPOSITORY** - Initialize with `git init` if needed
-
-## Best Practices
-
-1. **Consistency:** Follow existing patterns in the codebase
-2. **Accessibility:** Use semantic HTML and ARIA labels (e.g., `aria-label="Toggle menu"`)
-3. **Responsive Design:** Use Tailwind breakpoints (`lg:`, `md:`, etc.)
-4. **Performance:** Use React.memo, useMemo, useCallback when needed
-5. **Code Splitting:** Consider lazy loading for route components
-6. **Clean Up:** Remove console.logs before committing
-7. **Dependencies:** Keep dependencies up to date
+- Base: `@eslint/js` recommended
+- React Hooks rules enforced
+- Custom: `no-unused-vars` error, except uppercase/underscore variables
+- Ignored: `dist/`
 
 ## Common Tasks
 
-### Adding a New Page
-1. Create component in `src/pages/`
+**Adding a Page:**
+1. Create in `src/pages/`
 2. Add route in `src/App.jsx`
-3. Add navigation link to `NAV_LINKS` in `LandingPage.jsx`
+3. Add nav link to `NAV_LINKS` constant (if applicable)
 
-### Adding a Reusable Component
-1. Create in `src/components/` with appropriate subfolder
-2. Export as default
-3. Import with `.jsx` extension
-
-### Modifying Styles
+**Modifying Styles:**
 1. Use Tailwind utilities first
-2. For custom styles, add to `src/index.css` using `@layer utilities`
-3. Follow existing naming conventions
+2. Custom styles → `src/index.css` using `@layer utilities`
 
-## Notes for Agents
+## Notes
 
-- **No Testing:** Tests cannot be run. Verify changes manually in browser.
-- **No TypeScript:** Type errors won't occur, but be careful with props/data shape.
-- **No Prettier:** Format code manually following existing indentation (2 spaces).
-- **Icons:** All from Lucide React library.
-- **Static Data:** Content is hardcoded or in `/info` markdown files.
-- **Build Output:** Always ignored by git, safe to rebuild.
+- **No testing framework** - verify changes manually in browser
+- **No TypeScript** - be careful with props/data shape
+- **No Prettier** - format code manually (2 spaces)
+- **No PropTypes** - no runtime validation
+- **Static data** - content in `/info` markdown files or hardcoded
+- Git repo on branch `opus-2`
