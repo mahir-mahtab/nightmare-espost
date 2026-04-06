@@ -3,6 +3,20 @@ import PageShell from '../components/layout/PageShell.jsx';
 import { CyberCard } from '../components/ui/index.jsx';
 import { ORG_INFO } from '../data/constants.js';
 
+/**
+ * TODO: API Integration
+ * Replace ORG_INFO import with API call:
+ * - GET /api/public/settings - Fetch organization settings
+ * 
+ * Implementation:
+ * 1. Add useState for orgInfo, loading, error
+ * 2. Add useEffect to fetch org settings on mount
+ * 3. Call: const response = await fetch('/api/public/settings');
+ * 4. Handle loading and error states
+ * 5. Map API response (fields: location, focus, expansion, services, partnerships)
+ * 
+ * Note: This data changes infrequently - consider caching or keeping as static
+ */
 const AboutPage = () => (
   <PageShell
     title="About"

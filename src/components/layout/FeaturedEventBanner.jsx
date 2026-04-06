@@ -2,6 +2,21 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { TOURNAMENT_DATA } from '../../data/constants.js';
 
+/**
+ * TODO: API Integration
+ * Replace TOURNAMENT_DATA with live event data:
+ * - GET /api/public/events?status=live - Get currently live tournament
+ * - Or GET /api/public/events/featured - Get featured event
+ * 
+ * Implementation:
+ * 1. Fetch live event data (could share with HeroSection via context/props)
+ * 2. Conditionally render banner only if there's a live event
+ * 3. Map response (fields: name, slots, season)
+ * 
+ * Note: Consider fetching at App.jsx level and passing via context
+ * to avoid duplicate API calls across header components
+ */
+
 const FeaturedEventBanner = () => (
   <div className="relative border-b border-primary/20 bg-gradient-to-r from-primary/10 via-black to-primary/10">
     <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 lg:px-8">

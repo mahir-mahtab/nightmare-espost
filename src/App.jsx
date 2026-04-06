@@ -6,7 +6,10 @@ import EventsPage from './pages/EventsPage.jsx';
 import EventsHubPage from './pages/EventsHubPage.jsx';
 import EventLoginPage from './pages/EventLoginPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
+import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
 import ProtectedEventRoute from './components/routing/ProtectedEventRoute.jsx';
+import ProtectedAdminRoute from './components/routing/ProtectedAdminRoute.jsx';
 
 function App() {
   return (
@@ -27,6 +30,15 @@ function App() {
           )}
         />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route
+          path="/dashboard"
+          element={(
+            <ProtectedAdminRoute>
+              <DashboardPage />
+            </ProtectedAdminRoute>
+          )}
+        />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </div>

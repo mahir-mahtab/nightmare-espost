@@ -4,6 +4,27 @@ import { motion as Motion } from 'framer-motion';
 import { AchievementCard } from '../ui/index.jsx';
 import { ACHIEVEMENTS_DATA } from '../../data/constants.js';
 
+// ============================================================================
+// AchievementsSection Component
+// ----------------------------------------------------------------------------
+// TODO: Replace ACHIEVEMENTS_DATA with API call
+// API Endpoint: GET /api/public/achievements
+// 
+// Implementation:
+// 1. Use useState to store achievements data
+// 2. Use useEffect to fetch data on component mount
+// 3. Add loading state while fetching
+// 4. Handle error state if fetch fails
+// 
+// Example:
+// const [achievements, setAchievements] = useState([]);
+// useEffect(() => {
+//   fetch('/api/public/achievements')
+//     .then(res => res.json())
+//     .then(data => setAchievements(data.data.achievements));
+// }, []);
+// ============================================================================
+
 const AchievementsSection = () => (
   <section className="bg-zinc-950 px-6 py-20">
     <div className="mx-auto max-w-7xl">

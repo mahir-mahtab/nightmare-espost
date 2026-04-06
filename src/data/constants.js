@@ -1,5 +1,9 @@
 import { Facebook, Youtube, Globe, MessageCircle } from 'lucide-react';
 
+// ============================================================================
+// STATIC DATA - These values remain constant and don't require API calls
+// ============================================================================
+
 export const NAV_LINKS = [
   { name: 'HOME', path: '/' },
   { name: 'ABOUT', path: '/about' },
@@ -8,6 +12,10 @@ export const NAV_LINKS = [
   { name: 'EVENTS', path: '/events' },
 ];
 
+// ============================================================================
+// TOURNAMENT DATA - Replace with API call
+// API Endpoint: GET /api/public/events (for featured/current tournament)
+// ============================================================================
 export const TOURNAMENT_DATA = {
   name: 'NMxERD T1 Elite League',
   season: 'Season 3',
@@ -18,6 +26,10 @@ export const TOURNAMENT_DATA = {
   partners: ['Krafton', 'Tencent Games', 'Lightspeed & Quantum', 'United Nations Community'],
 };
 
+// ============================================================================
+// ACHIEVEMENTS DATA - Replace with API call
+// API Endpoint: GET /api/public/achievements
+// ============================================================================
 export const ACHIEVEMENTS_DATA = [
   {
     rank: '1ST RUNNERS UP',
@@ -61,11 +73,19 @@ export const ACHIEVEMENTS_DATA = [
   },
 ];
 
+// ============================================================================
+// TEAMS DATA (Organization Rosters) - Replace with API call
+// API Endpoint: GET /api/public/rosters
+// ============================================================================
 export const TEAMS_DATA = [
   { name: 'Nightmare Esports', role: '1st Line-up', status: 'Active', game: 'PUBG Mobile' },
   { name: 'Nightmare Official', role: '2nd Line-up', status: 'Active', game: 'PUBG Mobile' },
 ];
 
+// ============================================================================
+// INVITED TEAMS - Replace with API call
+// API Endpoint: GET /api/public/events/:eventId (includes invited_teams)
+// ============================================================================
 export const INVITED_TEAMS = [
   'DS Demolition Crew',
   'ERD Raven Claw',
@@ -76,12 +96,20 @@ export const INVITED_TEAMS = [
   'SF71 Esports',
 ];
 
+// ============================================================================
+// PRIZE STRUCTURE - Replace with API call
+// API Endpoint: GET /api/public/events/:eventId (includes prize_structure)
+// ============================================================================
 export const PRIZE_STRUCTURE = [
   { rank: 'Top 2', rewards: 'Slot in 2K Tournament Semi-Finals + Season 4 Finals' },
   { rank: 'Top 3', rewards: 'Slot in 2K Qualifier Finals' },
   { rank: 'Top 5', rewards: 'Certificates, Banners + Season 4 Quarter Finals' },
 ];
 
+// ============================================================================
+// ORGANIZATION INFO - Replace with API call
+// API Endpoint: GET /api/public/settings
+// ============================================================================
 export const ORG_INFO = {
   location: 'Bangladesh',
   focus: 'PUBG Mobile',
@@ -90,6 +118,10 @@ export const ORG_INFO = {
   partnerships: 'Open for sponsorships and strategic partnerships',
 };
 
+// ============================================================================
+// CONTENT CREATORS - Replace with API call
+// API Endpoint: GET /api/public/creators
+// ============================================================================
 export const CONTENT_CREATORS = [
   { name: 'Krull Gaming', image: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400&h=400&fit=crop', role: 'Streamer' },
   { name: 'Don Bhai', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', role: 'Content Creator' },
@@ -99,6 +131,11 @@ export const CONTENT_CREATORS = [
   { name: 'Storm Player', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop', role: 'Coach' },
 ];
 
+// ============================================================================
+// SOCIAL LINKS - Replace with API call
+// API Endpoint: GET /api/public/settings (includes social object)
+// Note: Icons are imported from lucide-react and mapped by name
+// ============================================================================
 export const SOCIAL_LINKS = [
   { name: 'Facebook', icon: Facebook, url: '#', color: 'hover:border-blue-500 hover:text-blue-500 hover:shadow-blue-500/20' },
   { name: 'YouTube', icon: Youtube, url: '#', color: 'hover:border-red-500 hover:text-red-500 hover:shadow-red-500/20' },

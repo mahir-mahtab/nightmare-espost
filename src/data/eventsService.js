@@ -1,3 +1,52 @@
+/**
+ * Events Service - Mock Implementation
+ * 
+ * TODO: Replace mock implementations with real API calls
+ * 
+ * API Endpoint Mapping:
+ * =====================
+ * 
+ * PUBLIC ENDPOINTS (no auth required):
+ * - getEventSummary()     -> GET /api/public/events/:eventId
+ * - getBidIncrements()    -> Static config or GET /api/public/events/:eventId (includes increments)
+ * 
+ * AUTHENTICATED ENDPOINTS (require JWT in Authorization header):
+ * - getTeams()            -> GET /api/events/:eventId/teams
+ * - listPlayers(filters)  -> GET /api/events/:eventId/players?search=&role=&status=
+ * - getOwners()           -> GET /api/events/:eventId/owners
+ * - getAuctionBoard()     -> GET /api/auction/:eventId/state
+ * - placeBid()            -> POST /api/auction/:eventId/bid
+ * - markAuctionStatus()   -> PUT /api/auction/:eventId/lots/:lotId/status (admin only)
+ * - finalizePurchase()    -> POST /api/auction/:eventId/purchase
+ * 
+ * WEBSOCKET EVENTS (future - for real-time auction):
+ * - auction:bid           -> Receive bid updates
+ * - auction:status        -> Receive lot status changes
+ * - auction:timer         -> Receive timer sync
+ * - auction:state         -> Full state sync on reconnect
+ * 
+ * Implementation Example:
+ * -----------------------
+ * async getEventSummary(eventId) {
+ *   const response = await fetch(`/api/public/events/${eventId}`);
+ *   if (!response.ok) throw new Error('Failed to fetch event');
+ *   return response.json();
+ * }
+ * 
+ * async placeBid({ eventId, auctionId, ownerId, amount }, token) {
+ *   const response = await fetch(`/api/auction/${eventId}/bid`, {
+ *     method: 'POST',
+ *     headers: {
+ *       'Content-Type': 'application/json',
+ *       'Authorization': `Bearer ${token}`
+ *     },
+ *     body: JSON.stringify({ lot_id: auctionId, owner_id: ownerId, amount })
+ *   });
+ *   if (!response.ok) throw new Error('Failed to place bid');
+ *   return response.json();
+ * }
+ */
+
 import {
   EVENT_SUMMARY,
   TEAM_CARDS,

@@ -4,6 +4,18 @@ import PageShell from '../components/layout/PageShell.jsx';
 import { CyberCard } from '../components/ui/index.jsx';
 import { TEAMS_DATA } from '../data/constants.js';
 
+/**
+ * TODO: API Integration
+ * Replace TEAMS_DATA import with API call:
+ * - GET /api/public/teams - Fetch all active teams with roster info
+ * 
+ * Implementation:
+ * 1. Add useState for teams, loading, error
+ * 2. Add useEffect to fetch teams on mount
+ * 3. Call: const response = await fetch('/api/public/teams');
+ * 4. Handle loading and error states
+ * 5. Map API response to component (fields: name, status, role, game)
+ */
 const TeamsPage = () => (
   <PageShell
     title="Teams"

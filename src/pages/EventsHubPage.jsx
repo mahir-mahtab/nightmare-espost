@@ -6,6 +6,21 @@ import { CyberCard } from '../components/ui/index.jsx';
 import { eventsService } from '../data/eventsService.js';
 import { eventAuthService } from '../data/eventAuthService.js';
 
+/**
+ * TODO: API Integration - EventsHubPage
+ * Replace eventsService.getEventSummary() with real API call:
+ * - GET /api/public/events - List all published events
+ * - GET /api/public/events/:eventId - Get specific event details
+ * 
+ * Implementation:
+ * 1. Update eventsService.getEventSummary() to call real API
+ * 2. Or replace directly: fetch('/api/public/events')
+ * 3. Filter for published/live events
+ * 4. Map response (fields: id, title, season, game, mode, streamStart)
+ * 
+ * Future enhancement: Display multiple events as cards
+ */
+
 const EventsHubPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);

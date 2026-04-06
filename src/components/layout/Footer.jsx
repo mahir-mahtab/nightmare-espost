@@ -2,6 +2,20 @@ import { Link } from 'react-router-dom';
 import { GlitchText } from '../ui/index.jsx';
 import { NAV_LINKS, ORG_INFO } from '../../data/constants.js';
 
+/**
+ * TODO: API Integration (Optional - Low Priority)
+ * Footer uses NAV_LINKS and ORG_INFO:
+ * - NAV_LINKS: Keep static (rarely changes)
+ * - ORG_INFO: GET /api/public/settings -> org info
+ * 
+ * Implementation:
+ * 1. Fetch org settings via shared context (same as AboutPage)
+ * 2. Map response (fields: location, partnerships, services)
+ * 
+ * Note: Consider React context to share org settings across
+ * AboutPage, Footer, and other components using ORG_INFO
+ */
+
 const Footer = () => (
   <footer className="border-t border-white/10 bg-black">
     <div className="mx-auto max-w-7xl px-6 py-16">

@@ -3,6 +3,22 @@ import { Calendar, Award, ArrowRight } from 'lucide-react';
 import { CyberCard, PrizeRow } from '../ui/index.jsx';
 import { TOURNAMENT_DATA, PRIZE_STRUCTURE } from '../../data/constants.js';
 
+/**
+ * TODO: API Integration
+ * Replace hardcoded data with API calls:
+ * - GET /api/public/events/featured - Get featured tournament
+ * - GET /api/public/events/:eventId/prizes - Get prize structure
+ * 
+ * Implementation:
+ * 1. Add useState for tournament, prizeStructure
+ * 2. Fetch on mount or receive via props from LandingPage
+ * 3. Map response:
+ *    - Tournament: name, season, registrations, slots, avgLobbySize, partners
+ *    - Prizes: rank, team, prize (from event_prize_structure table)
+ * 
+ * Note: Consider caching or passing data from parent to reduce API calls
+ */
+
 const EventSpotlightSection = () => (
   <section className="px-6 py-20">
     <div className="mx-auto max-w-7xl">

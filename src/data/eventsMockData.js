@@ -1,3 +1,28 @@
+// ============================================================================
+// EVENT MOCK DATA - Replace with API calls
+// ============================================================================
+// This file contains mock data for the events system.
+// When the backend is connected, replace these with API calls to:
+//
+// EVENT DATA:
+//   - GET /api/public/events/:eventId - Get event details
+//   - GET /api/events/:eventId - Admin: Get event with full details
+//
+// TEAMS DATA:
+//   - GET /api/public/events/:eventId/teams - Get teams for event
+//   - GET /api/events/:eventId/teams - Admin: Full team management
+//
+// PLAYERS DATA:
+//   - GET /api/public/events/:eventId/players - Get players for event
+//   - GET /api/events/:eventId/players - Admin: Full player management
+//
+// AUCTION DATA:
+//   - GET /api/public/events/:eventId/auction - Get auction state
+//   - GET /api/events/:eventId/auction/state - Admin: Full auction state
+//   - POST /api/events/:eventId/auction/bid - Place bid (via WebSocket later)
+//
+// ============================================================================
+
 export const EVENT_ROUTE_TABS = [
   { id: 'event', label: 'Overview', path: '/events/event' },
   { id: 'team', label: 'Teams', path: '/events/team' },
@@ -6,6 +31,10 @@ export const EVENT_ROUTE_TABS = [
   { id: 'players-buy', label: 'Purchase', path: '/events/players-buy' },
 ];
 
+// ============================================================================
+// EVENT SUMMARY - Replace with API call
+// API Endpoint: GET /api/public/events/:eventId
+// ============================================================================
 export const EVENT_SUMMARY = {
   id: 'nmxerd-s3',
   title: 'NM x ERD Streamer Auction Cup',
@@ -19,6 +48,12 @@ export const EVENT_SUMMARY = {
   banner: '/achivement/quadratic-1strunner.png',
 };
 
+// ============================================================================
+// TEAM CARDS - Replace with API call
+// API Endpoint: GET /api/public/events/:eventId/teams
+// Response includes: id, name, owner_name, owner_avatar_url, purse, coins_left
+// Player roster images come from: GET /api/events/:eventId/teams/:teamId/roster
+// ============================================================================
 export const TEAM_CARDS = [
   {
     id: 't1',
@@ -100,6 +135,13 @@ export const TEAM_CARDS = [
   },
 ];
 
+// ============================================================================
+// PLAYERS POOL - Replace with API call
+// API Endpoint: GET /api/public/events/:eventId/players
+// Query params: ?status=available&role=IGL
+// Response includes: id, name, role, original_team_name, base_price, team_id,
+//                    sold_price, rank_point, nm_coin, image_url, status
+// ============================================================================
 export const PLAYERS_POOL = [
   {
     id: 'p1',
@@ -191,6 +233,11 @@ export const PLAYERS_POOL = [
   },
 ];
 
+// ============================================================================
+// OWNERS - Team owners for auction bidding
+// API Endpoint: GET /api/events/:eventId/teams
+// Each team has owner_name and owner_avatar_url
+// ============================================================================
 export const OWNERS = [
   {
     id: 'o1',
@@ -218,6 +265,13 @@ export const OWNERS = [
   },
 ];
 
+// ============================================================================
+// AUCTION BOARD - Replace with API call
+// API Endpoint: GET /api/events/:eventId/auction/state
+// For live updates: Use WebSocket connection to /socket.io
+// Response includes: is_active, current_player, current_bid, current_bidder,
+//                    start_time, duration, bid_increments, time_remaining
+// ============================================================================
 export const AUCTION_BOARD = {
   activeAuctionId: 'a1',
   lotDuration: 30,
@@ -229,4 +283,9 @@ export const AUCTION_BOARD = {
   ],
 };
 
+// ============================================================================
+// BID INCREMENTS - Replace with API call
+// API Endpoint: GET /api/events/:eventId/auction/config
+// Response includes: duration, bid_increments
+// ============================================================================
 export const BID_INCREMENTS = [100, 500, 1000];

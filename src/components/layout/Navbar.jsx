@@ -4,6 +4,17 @@ import { ChevronRight, Menu, X } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { NAV_LINKS } from '../../data/constants.js';
 
+/**
+ * TODO: API Integration (Optional - Low Priority)
+ * Navigation links are typically static. Options:
+ * 
+ * 1. Keep Static (Recommended): NAV_LINKS rarely change
+ * 2. Dynamic: GET /api/public/settings -> includes navigation config
+ * 
+ * If making dynamic, add to org_settings table and fetch once on app load,
+ * storing in React context for all components to access.
+ */
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 

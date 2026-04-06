@@ -2,6 +2,22 @@ import { motion as Motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { SOCIAL_LINKS } from '../../data/constants.js';
 
+/**
+ * TODO: API Integration (Optional)
+ * Social links could be fetched from API or kept static:
+ * - GET /api/public/settings - Includes social_links in org settings
+ * 
+ * Current approach: Static SOCIAL_LINKS with icon components
+ * 
+ * If making dynamic:
+ * 1. Store social links in org_settings table as JSON
+ * 2. API returns: [{ name, url, iconName, color }]
+ * 3. Map iconName to Lucide icon components client-side
+ * 
+ * Note: Since icons are imported components (Facebook, Instagram, etc.),
+ * keeping this static is simpler unless links change frequently
+ */
+
 const StayConnectedSection = () => (
   <section className="relative overflow-hidden px-6 py-24">
     {/* Diagonal Background Pattern */}

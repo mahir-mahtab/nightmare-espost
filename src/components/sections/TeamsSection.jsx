@@ -4,6 +4,26 @@ import { motion as Motion } from 'framer-motion';
 import { CyberCard, TeamCard } from '../ui/index.jsx';
 import { TEAMS_DATA, INVITED_TEAMS } from '../../data/constants.js';
 
+// ============================================================================
+// TeamsSection Component
+// ----------------------------------------------------------------------------
+// TODO: Replace TEAMS_DATA and INVITED_TEAMS with API calls
+// 
+// TEAMS_DATA (Organization Rosters):
+//   API Endpoint: GET /api/public/rosters
+//   Returns: { rosters: [{ name, role, status, game }] }
+// 
+// INVITED_TEAMS (Event Invited Teams):
+//   API Endpoint: GET /api/public/events/:eventId
+//   Returns: { invited_teams: [{ team_name, is_confirmed }] }
+//   Note: eventId should come from a featured/current event
+// 
+// Implementation:
+// 1. useState for rosters and invitedTeams
+// 2. useEffect to fetch both on mount
+// 3. For invited teams, first fetch featured event, then its invited teams
+// ============================================================================
+
 const TeamsSection = () => (
   <section className="border-t border-white/10 bg-zinc-950 px-6 py-20">
     <div className="mx-auto max-w-7xl">

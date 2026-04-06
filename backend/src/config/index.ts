@@ -15,6 +15,10 @@ export const config = {
   // Redis
   REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
 
+  // JWT
+  JWT_SECRET: process.env.JWT_SECRET ?? 'nightmare-esports-secret-key-change-in-production',
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? '24h',
+
   // Environment
   NODE_ENV: process.env.NODE_ENV ?? 'development',
 };

@@ -3,6 +3,19 @@ import PageShell from '../components/layout/PageShell.jsx';
 import { CyberCard, AchievementCard, PrizeRow } from '../components/ui/index.jsx';
 import { ACHIEVEMENTS_DATA, PRIZE_STRUCTURE } from '../data/constants.js';
 
+/**
+ * TODO: API Integration
+ * Replace hardcoded data with API calls:
+ * - GET /api/public/achievements - Fetch all achievements
+ * - GET /api/public/events/:eventId/prizes - Fetch prize structure (if needed)
+ * 
+ * Implementation:
+ * 1. Add useState for achievements, prizeStructure, loading, error
+ * 2. Add useEffect to fetch achievements on mount
+ * 3. Call: const response = await fetch('/api/public/achievements');
+ * 4. Handle loading and error states
+ * 5. Map API response (fields: team, position, tournament, prize)
+ */
 const AchievementsPage = () => (
   <PageShell
     title="Achievements"

@@ -4,6 +4,21 @@ import { motion as Motion } from 'framer-motion';
 import { GlitchText, CyberCard } from '../ui/index.jsx';
 import { TOURNAMENT_DATA } from '../../data/constants.js';
 
+/**
+ * TODO: API Integration
+ * Replace TOURNAMENT_DATA with API call for featured/live event:
+ * - GET /api/public/events?status=live - Fetch currently live tournament
+ * - Or GET /api/public/events/featured - Get featured event for homepage
+ * 
+ * Implementation:
+ * 1. Add useState for tournament, loading states
+ * 2. Fetch on mount or receive via props from parent
+ * 3. Map response (fields: slots, registrations, season)
+ * 
+ * Note: Consider fetching at LandingPage level and passing as props
+ * to avoid multiple API calls in child sections
+ */
+
 const HeroSection = () => (
   <section className="relative overflow-hidden px-6 pb-24 pt-16 md:pt-20">
     {/* Background Effects */}

@@ -23,6 +23,32 @@ import { EVENT_ROUTE_TABS } from '../data/eventsMockData.js';
 import { eventsService } from '../data/eventsService.js';
 import useEventAuth from '../hooks/useEventAuth.js';
 
+/**
+ * TODO: API Integration - EventsPage
+ * This page already uses eventsService which simulates API calls.
+ * Replace eventsService methods with real API calls:
+ * 
+ * Current mock service calls -> Real API endpoints:
+ * - eventsService.getEventSummary() -> GET /api/public/events/:eventId
+ * - eventsService.getTeams() -> GET /api/events/:eventId/teams (requires auth)
+ * - eventsService.listPlayers(filters) -> GET /api/events/:eventId/players?search=&role=&status=
+ * - eventsService.getOwners() -> GET /api/events/:eventId/owners (requires auth)
+ * - eventsService.getAuctionBoard() -> GET /api/auction/:eventId/state
+ * - eventsService.getBidIncrements() -> Could be from event config or static
+ * - eventsService.placeBid() -> POST /api/auction/:eventId/bid (requires auth)
+ * - eventsService.markAuctionStatus() -> PUT /api/auction/:eventId/lots/:lotId/status (admin only)
+ * - eventsService.finalizePurchase() -> POST /api/auction/:eventId/purchase (requires auth)
+ * 
+ * WebSocket Integration (future):
+ * - Real-time bid updates via Socket.io
+ * - Auction state sync across clients
+ * - Timer synchronization
+ * 
+ * Authentication:
+ * - useEventAuth hook should validate against /api/admin/login
+ * - Include JWT token in Authorization header for protected endpoints
+ */
+
 const FILTER_STATES = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },

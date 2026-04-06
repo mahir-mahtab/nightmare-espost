@@ -3,6 +3,26 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
 import { CONTENT_CREATORS } from '../../data/constants.js';
 
+// ============================================================================
+// ContentCreatorsSection Component
+// ----------------------------------------------------------------------------
+// TODO: Replace CONTENT_CREATORS with API call
+// API Endpoint: GET /api/public/creators
+// 
+// Implementation:
+// 1. Add state for creators: const [creators, setCreators] = useState([]);
+// 2. Fetch on mount in useEffect
+// 3. Add loading skeleton while fetching
+// 4. Use creators state instead of CONTENT_CREATORS
+// 
+// Example:
+// useEffect(() => {
+//   fetch('/api/public/creators')
+//     .then(res => res.json())
+//     .then(data => setCreators(data.data.creators));
+// }, []);
+// ============================================================================
+
 const ContentCreatorsSection = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);

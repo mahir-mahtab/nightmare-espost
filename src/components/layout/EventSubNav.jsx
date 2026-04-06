@@ -2,6 +2,18 @@ import { NavLink } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { EVENT_ROUTE_TABS } from '../../data/eventsMockData.js';
 
+/**
+ * TODO: API Integration (Optional - Low Priority)
+ * EVENT_ROUTE_TABS defines navigation tabs for event pages.
+ * 
+ * Options:
+ * 1. Keep Static (Recommended): Tab structure is tied to routes/features
+ * 2. Dynamic: GET /api/events/:eventId -> includes available tabs
+ *    - Useful if different events have different features enabled
+ * 
+ * If making dynamic, badges (like "LIVE") could come from event state
+ */
+
 const EventSubNav = ({ eventId }) => (
   <section className="border-y border-primary/20 bg-gradient-to-r from-primary/12 via-black to-primary/12">
     <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-5 py-3 lg:px-8">
