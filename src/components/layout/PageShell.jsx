@@ -1,13 +1,12 @@
 import { motion as Motion } from 'framer-motion';
-import { Navbar, Footer, FeaturedEventBanner } from './index.jsx';
-import { GlitchText } from '../ui/index.jsx';
+import { Navbar, Footer } from './index.jsx';
 
 const PageShell = ({ children, subtitle, accent, subHeader }) => (
   <div className="min-h-screen bg-black text-white">
     <Navbar />
-    <main className="pt-24">
+    <main className="pt-20 md:pt-22">
       {subHeader}
-      <section className="relative overflow-hidden px-6 pb-12 pt-6 md:pt-16">
+      <section className="relative overflow-hidden px-4 pb-8 pt-4 sm:px-5 md:pt-10 lg:px-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,0,0,0.1),transparent_50%)]" />
         <div className="relative mx-auto max-w-7xl">
           <Motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -16,7 +15,7 @@ const PageShell = ({ children, subtitle, accent, subHeader }) => (
                 {accent}
               </span>
             )}
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/60">{subtitle}</p>
+            {subtitle && <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/60 md:text-base">{subtitle}</p>}
           </Motion.div>
         </div>
       </section>

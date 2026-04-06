@@ -13,8 +13,6 @@ import {
   Timer,
   Trophy,
   Users,
-  Flame,
-  Zap,
 } from 'lucide-react';
 import PageShell from '../components/layout/PageShell.jsx';
 import EventSubNav from '../components/layout/EventSubNav.jsx';
@@ -175,7 +173,7 @@ const PlayerGrid = ({ players, onSelect }) => (
         onClick={() => onSelect(player.id)}
         className="group relative overflow-hidden rounded-[1.5rem] border border-white/15 bg-zinc-950 text-left transition-all hover:border-primary/70"
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-white">
+        <div className="relative aspect-[4/5] overflow-hidden bg-white">
           <img src={player.image} alt={player.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           {player.status !== 'active' && <span className="sold-stamp">{player.status}</span>}
         </div>
@@ -201,7 +199,6 @@ const PlayerGrid = ({ players, onSelect }) => (
   </div>
 );
 
-// Stunning Auction Hub Layout - Mobile optimized
 const AuctionHub = ({
   auction,
   selectedAuctionId,
@@ -222,252 +219,187 @@ const AuctionHub = ({
   onStatusChange,
   onFinalizePurchase,
 }) => {
+  const activePlayerName = selectedPlayer?.name || 'No player selected';
+
   return (
-    <div className="space-y-4 min-h-[600px] flex flex-col">
-      <div className="grid gap-4 flex-1 grid-cols-1 sm:grid-cols-4 lg:grid-cols-[160px_1fr_160px] xl:grid-cols-[200px_1fr_200px] overflow-visible">
-        {/* Players List - Left Panel */}
-        <div className="col-span-1">
-          <CyberCard className="flex flex-col h-full p-4">
-            <p className="font-display text-xl md:text-2xl font-black text-white/95 uppercase leading-tight">Roster</p>
-            <div className="mt-4 flex gap-2 overflow-x-auto sm:overflow-visible lg:flex-col lg:space-y-2 flex-1 items-start content-start flex-wrap lg:flex-nowrap pb-2 sm:pb-0">
-              {auction.lots.map((lot) => {
-                const player = playerById[lot.playerId];
-                if (!player) {
-                  return null;
-                }
+    <div className="space-y-4">
+      <CyberCard className="p-3.5 md:p-4">
+        <div className="grid gap-3 md:gap-4 md:grid-cols-[140px_1fr] xl:grid-cols-[160px_1fr]">
+          <div className="relative overflow-hidden rounded-lg border border-white/15 bg-white">
+            {selectedPlayer ? (
+              <img src={selectedPlayer.image} alt={selectedPlayer.name} className="h-full max-h-44 w-full object-cover object-top" />
+            ) : (
+              <div className="flex h-44 items-center justify-center bg-black/70 text-white/45">
+                <Gavel className="h-10 w-10" />
+              </div>
+            )}
+            {selectedAuction?.status && selectedAuction.status !== 'active' && <span className="sold-stamp">{selectedAuction.status}</span>}
+          </div>
 
-                const isActive = lot.id === selectedAuctionId;
-
-                return (
-                  <Motion.button
-                    key={lot.id}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAuctionId(lot.id);
-                      setBidAmount(String(lot.currentBid));
-                    }}
-                    className={`relative flex-none w-16 md:w-20 lg:w-full overflow-hidden rounded-xl border p-1.5 text-center lg:text-left transition-all ${
-                      isActive ? 'border-primary/70 bg-primary/15 shadow-lg shadow-primary/30' : 'border-white/15 bg-black/45 hover:border-primary/45'
-                    }`}
-                  >
-                    <img src={player.image} alt={player.name} className="h-12 w-12 mx-auto lg:h-full lg:w-full rounded-lg object-cover" />
-                    {lot.status !== 'active' && <span className="sold-stamp text-xs">{lot.status}</span>}
-                    <p className="mt-1 truncate text-[10px] md:text-xs lg:text-xs font-bold tracking-[0.08em] text-white uppercase">{player.name}</p>
-                  </Motion.button>
-                );
-              })}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.22em] text-white/45 uppercase">Now Selecting</p>
+                <h3 className="mt-1 font-display text-xl font-black uppercase text-white md:text-2xl">{activePlayerName}</h3>
+              </div>
+              <span className="rounded border border-primary/50 bg-primary/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-primary uppercase">
+                {activeTab === 'auction' ? 'Auction' : 'Buy Mode'}
+              </span>
             </div>
-          </CyberCard>
-        </div>
 
-        {/* Main Auction Display - Center Panel */}
-        <div className="col-span-1 sm:col-span-2 lg:col-span-1">
-          <CyberCard accent className="relative overflow-hidden flex flex-col h-full">
-            {/* Animated background glow */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,0,0,0.2),transparent_45%),radial-gradient(circle_at_80%_90%,rgba(255,90,0,0.12),transparent_40%)]" />
-            <Motion.div
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="absolute top-0 right-0 h-32 w-32 rounded-full bg-primary/20 blur-3xl"
-            />
+            <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-black/45 p-3">
+              <BidMeta label="Role" value={selectedPlayer?.role || '-'} />
+              <BidMeta label="Current" value={selectedAuction?.currentBid || selectedPlayer?.nmCoin || '-'} />
+              <BidMeta label="Rank" value={selectedPlayer?.rankPoint || '-'} />
+            </div>
 
-            <div className="relative p-4 md:p-6 flex flex-col h-full justify-start md:justify-center items-center">
-              {/* Status Badge */}
-              <Motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="mb-2 md:mb-4 flex items-center gap-2 border border-primary/50 bg-primary/15 px-3 py-1.5 text-[10px] font-black tracking-[0.26em] text-primary uppercase rounded-full"
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                value={bidAmount}
+                onChange={(event) => setBidAmount(event.target.value)}
+                disabled={!canBid}
+                className="h-11 w-full min-w-[140px] flex-1 border border-white/30 bg-white px-3 text-center font-display text-2xl font-black text-zinc-950 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-zinc-200 rounded"
+              />
+              <button
+                type="button"
+                onClick={onPlaceBid}
+                disabled={!canBid}
+                className="inline-flex h-11 items-center justify-center gap-2 border border-amber-300 bg-amber-300 px-3 text-xs font-bold tracking-[0.16em] text-zinc-900 uppercase transition-all hover:bg-amber-200 disabled:cursor-not-allowed disabled:border-zinc-400 disabled:bg-zinc-400"
               >
-                <Flame className="h-3.5 w-3.5 animate-pulse" />
-                {activeTab === 'auction' ? 'Live Auction' : 'Purchase Mode'}
-              </Motion.div>
-
-              {selectedPlayer ? (
-                <div className="mx-auto max-w-2xl w-full space-y-4">
-                  {/* Player Card */}
-                  <Motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 300 }}
-                    className="overflow-hidden rounded-2xl border border-white/20 bg-white"
-                  >
-                    <div className="relative overflow-hidden aspect-video md:aspect-[3/2] bg-white">
-                      <img src={selectedPlayer.image} alt={selectedPlayer.name} className="h-full w-full object-cover object-top" />
-                      {/* Status indicator */}
-                      <div className={`absolute top-4 right-4 px-3 py-1.5 rounded font-bold text-xs uppercase flex items-center gap-1.5 ${
-                        selectedAuction?.status === 'sold' 
-                          ? 'bg-green-500/20 border border-green-500/60 text-green-300'
-                          : selectedAuction?.status === 'unsold'
-                          ? 'bg-yellow-500/20 border border-yellow-500/60 text-yellow-300'
-                          : 'bg-red-500/20 border border-red-500/60 text-red-300 animate-pulse'
-                      }`}>
-                        <Zap className="h-3 w-3" />
-                        {selectedAuction?.status === 'active' ? 'LIVE' : selectedAuction?.status}
-                      </div>
-                    </div>
-                    <div className="border-t border-primary/70 bg-zinc-950">
-                      <div className="bg-gradient-to-r from-red-600 to-orange-600 px-4 py-2.5 text-center font-display text-xl md:text-2xl font-black text-white uppercase">
-                        {selectedPlayer.name}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 px-4 py-3">
-                        <BidMeta label="Role" value={selectedPlayer.role} />
-                        <BidMeta label="Current Bid" value={selectedAuction?.currentBid || selectedPlayer.nmCoin} />
-                        <BidMeta label="Rank" value={selectedPlayer.rankPoint} />
-                      </div>
-                    </div>
-                  </Motion.div>
-
-                  {/* Bidding Section */}
-                  <div className="bg-black/40 border border-white/10 rounded-xl p-4 space-y-3">
-                    <p className="text-center text-[10px] font-bold tracking-[0.2em] text-white/55 uppercase">Place Your Bid</p>
-                    <div className="flex items-center justify-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        value={bidAmount}
-                        onChange={(event) => setBidAmount(event.target.value)}
-                        disabled={!canBid}
-                        className="h-12 w-full max-w-[180px] border border-white/30 bg-white text-center font-display text-2xl md:text-3xl font-black text-zinc-950 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-zinc-200 rounded-lg"
-                      />
-                      <Motion.button
-                        whileHover={canBid ? { scale: 1.1 } : {}}
-                        whileTap={canBid ? { scale: 0.95 } : {}}
-                        type="button"
-                        onClick={onPlaceBid}
-                        disabled={!canBid}
-                        className="flex h-12 w-12 items-center justify-center border-2 border-amber-300 bg-gradient-to-br from-amber-300 to-amber-400 text-zinc-900 transition-all hover:shadow-lg hover:shadow-amber-400/50 disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:border-zinc-400 rounded-lg font-bold"
-                        aria-label="Place bid"
-                      >
-                        <Coins className="h-5 w-5" />
-                      </Motion.button>
-                    </div>
-
-                    {/* Increment Buttons */}
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {increments.map((increment) => (
-                        <button
-                          key={increment}
-                          type="button"
-                          onClick={() => setBidAmount(String(Number(bidAmount || 0) + increment))}
-                          disabled={!canBid}
-                          className="border border-white/25 bg-black/65 px-3 py-2 text-xs md:text-sm font-bold text-white transition-all hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-40 rounded"
-                        >
-                          +{increment}
-                        </button>
-                      ))}
-                    </div>
-
-                    {!canBid && <p className="text-xs text-amber-300 text-center">View-only mode active for current session.</p>}
-                  </div>
-
-                  {/* Countdown Timer */}
-                  <Motion.div
-                    animate={selectedAuction?.timeLeft < 5 ? { scale: [1, 1.05, 1] } : {}}
-                    transition={{ duration: 0.5, repeat: selectedAuction?.timeLeft < 5 ? Infinity : 0 }}
-                    className="bg-gradient-to-r from-amber-500/20 to-red-500/20 border border-red-500/50 rounded-xl p-4 space-y-2"
-                  >
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-                      <Motion.div
-                        animate={{ width: `${Math.min(100, ((selectedAuction?.timeLeft || 0) / (auction.lotDuration || 30)) * 100)}%` }}
-                        transition={{ duration: 1, ease: 'linear' }}
-                        className="h-full bg-gradient-to-r from-amber-300 via-orange-500 to-red-500"
-                      />
-                    </div>
-                    <div className="flex items-center justify-center gap-2 font-display text-2xl md:text-3xl font-black">
-                      <Timer className="h-6 w-6 text-primary animate-pulse" />
-                      <span className={selectedAuction?.timeLeft < 5 ? 'text-red-400 animate-pulse' : 'text-white'}>
-                        {String(selectedAuction?.timeLeft || 0).padStart(2, '0')} SEC
-                      </span>
-                    </div>
-                  </Motion.div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2">
-                    <Motion.button
-                      whileHover={canBid ? { scale: 1.05 } : {}}
-                      whileTap={canBid ? { scale: 0.95 } : {}}
-                      type="button"
-                      onClick={() => onStatusChange('sold')}
-                      disabled={!canBid}
-                      className="border border-green-500/50 bg-green-500/10 px-4 py-2 text-xs md:text-sm font-bold tracking-[0.2em] text-green-300 uppercase disabled:cursor-not-allowed disabled:opacity-40 rounded hover:bg-green-500/20 transition-all flex-1 sm:flex-none"
-                    >
-                      Mark Acquired
-                    </Motion.button>
-                    <Motion.button
-                      whileHover={canBid ? { scale: 1.05 } : {}}
-                      whileTap={canBid ? { scale: 0.95 } : {}}
-                      type="button"
-                      onClick={() => onStatusChange('unsold')}
-                      disabled={!canBid}
-                      className="border border-yellow-500/50 bg-yellow-500/10 px-4 py-2 text-xs md:text-sm font-bold tracking-[0.2em] text-yellow-300 uppercase disabled:cursor-not-allowed disabled:opacity-40 rounded hover:bg-yellow-500/20 transition-all flex-1 sm:flex-none"
-                    >
-                      Mark Unavailable
-                    </Motion.button>
-                    {activeTab === 'players-buy' && (
-                      <Motion.button
-                        whileHover={canBid ? { scale: 1.05 } : {}}
-                        whileTap={canBid ? { scale: 0.95 } : {}}
-                        type="button"
-                        onClick={onFinalizePurchase}
-                        disabled={!canBid}
-                        className="border border-primary/60 bg-primary/20 px-4 py-2 text-xs md:text-sm font-bold tracking-[0.2em] text-primary uppercase disabled:cursor-not-allowed disabled:opacity-40 rounded hover:bg-primary/30 transition-all flex-1 sm:flex-none"
-                      >
-                        Confirm Selection
-                      </Motion.button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <Gavel className="h-12 w-12 text-primary/40 mb-4" />
-                  <p className="text-white/40 text-sm">Choose a player from the roster</p>
-                </div>
-              )}
+                <Coins className="h-4 w-4" />
+                Bid
+              </button>
+              {increments.map((increment) => (
+                <button
+                  key={increment}
+                  type="button"
+                  onClick={() => setBidAmount(String(Number(bidAmount || 0) + increment))}
+                  disabled={!canBid}
+                  className="h-11 border border-white/25 bg-black/65 px-3 text-xs font-bold text-white transition-all hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  +{increment}
+                </button>
+              ))}
             </div>
-          </CyberCard>
-        </div>
 
-        {/* Participants Panel - Right Panel */}
-        <div className="col-span-1">
-          <CyberCard className="flex flex-col h-full p-4">
-            <p className="font-display text-xl md:text-2xl font-black text-white/95 uppercase leading-tight">Bidders</p>
-            <div className="mt-4 flex gap-2 overflow-x-auto sm:overflow-visible lg:flex-col lg:space-y-2 flex-1 items-start content-start flex-wrap lg:flex-nowrap pb-2 sm:pb-0">
-              {owners.map((owner) => {
-                const isSelected = owner.id === selectedOwnerId;
-                const auctionHolder = selectedOwner?.id === owner.id;
-
-                return (
-                  <Motion.button
-                    key={owner.id}
-                    whileHover={canBid ? { scale: 1.05 } : {}}
-                    whileTap={canBid ? { scale: 0.95 } : {}}
+            <div className="space-y-2">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                <Motion.div
+                  animate={{ width: `${Math.min(100, ((selectedAuction?.timeLeft || 0) / (auction.lotDuration || 30)) * 100)}%` }}
+                  transition={{ duration: 1, ease: 'linear' }}
+                  className="h-full bg-gradient-to-r from-amber-300 via-orange-500 to-red-500"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-1.5 font-display text-lg font-black text-white md:text-xl">
+                  <Timer className="h-4 w-4 text-primary" />
+                  {String(selectedAuction?.timeLeft || 0).padStart(2, '0')} SEC
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
                     type="button"
-                    onClick={() => {
-                      if (canBid) {
-                        setSelectedOwnerId(owner.id);
-                      }
-                    }}
-                    className={`relative flex-none w-16 md:w-20 lg:w-full overflow-hidden rounded-xl border p-1.5 text-center lg:text-left transition-all ${
-                      isSelected ? 'border-primary/70 bg-primary/15 shadow-lg shadow-primary/30' : 'border-white/15 bg-black/45 hover:border-primary/45'
-                    } ${!canBid ? 'cursor-not-allowed opacity-70' : ''}`}
+                    onClick={() => onStatusChange('sold')}
+                    disabled={!canBid}
+                    className="border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-green-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <img src={owner.avatar} alt={owner.name} className="h-12 w-12 mx-auto lg:h-full lg:w-full rounded-lg object-cover" />
-                    <div className="mt-1 flex flex-col lg:flex-row items-center justify-between gap-1 lg:gap-2">
-                      <p className="truncate text-[10px] md:text-xs lg:text-xs font-bold tracking-[0.08em] text-white uppercase">{owner.name}</p>
-                      {auctionHolder && (
-                        <span className="rounded border border-primary/50 bg-primary/15 px-1.5 py-0.5 text-[8px] lg:text-[9px] tracking-[0.18em] text-primary uppercase font-bold">
-                          Top
-                        </span>
-                      )}
-                    </div>
-                  </Motion.button>
-                );
-              })}
+                    Acquired
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStatusChange('unsold')}
+                    disabled={!canBid}
+                    className="border border-yellow-500/50 bg-yellow-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-yellow-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Unsold
+                  </button>
+                  {activeTab === 'players-buy' && (
+                    <button
+                      type="button"
+                      onClick={onFinalizePurchase}
+                      disabled={!canBid}
+                      className="border border-primary/60 bg-primary/20 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-primary uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Confirm
+                    </button>
+                  )}
+                </div>
+              </div>
+              {!canBid && <p className="text-[11px] text-amber-300">View-only mode active for this session.</p>}
             </div>
-          </CyberCard>
+          </div>
         </div>
+      </CyberCard>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+        <CyberCard className="p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-display text-lg font-black uppercase text-white">Player Queue</p>
+            <p className="text-[10px] font-bold tracking-[0.18em] text-white/45 uppercase">Tap to switch</p>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
+            {auction.lots.map((lot) => {
+              const player = playerById[lot.playerId];
+              if (!player) {
+                return null;
+              }
+
+              const isActive = lot.id === selectedAuctionId;
+
+              return (
+                <button
+                  key={lot.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedAuctionId(lot.id);
+                    setBidAmount(String(lot.currentBid));
+                  }}
+                  className={`relative overflow-hidden rounded-md border p-1.5 text-left transition-all ${
+                    isActive ? 'border-primary/70 bg-primary/10' : 'border-white/15 bg-black/50 hover:border-primary/45'
+                  }`}
+                >
+                  <div className="relative overflow-hidden rounded-sm bg-white">
+                    <img src={player.image} alt={player.name} className="h-16 w-full object-cover object-top sm:h-20" />
+                    {lot.status !== 'active' && <span className="sold-stamp">{lot.status}</span>}
+                  </div>
+                  <p className="mt-1 truncate text-[10px] font-bold tracking-[0.1em] text-white uppercase">{player.name}</p>
+                </button>
+              );
+            })}
+          </div>
+        </CyberCard>
+
+        <CyberCard className="p-4">
+          <p className="font-display text-lg font-black uppercase text-white">Bidders</p>
+          <div className="mt-3 space-y-2">
+            {owners.map((owner) => {
+              const isSelected = owner.id === selectedOwnerId;
+              const auctionHolder = selectedOwner?.id === owner.id;
+
+              return (
+                <button
+                  key={owner.id}
+                  type="button"
+                  onClick={() => {
+                    if (canBid) {
+                      setSelectedOwnerId(owner.id);
+                    }
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-md border p-2 text-left transition-all ${
+                    isSelected ? 'border-primary/70 bg-primary/10' : 'border-white/15 bg-black/45 hover:border-primary/45'
+                  } ${!canBid ? 'cursor-not-allowed opacity-70' : ''}`}
+                >
+                  <img src={owner.avatar} alt={owner.name} className="h-9 w-9 rounded object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11px] font-bold tracking-[0.08em] text-white uppercase">{owner.name}</p>
+                    <p className="text-[10px] text-white/45">{auctionHolder ? 'Top bid' : 'Ready'}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </CyberCard>
       </div>
     </div>
   );
@@ -476,7 +408,7 @@ const AuctionHub = ({
 const BidMeta = ({ label, value }) => (
   <div className="text-center">
     <p className="text-[9px] font-bold tracking-[0.16em] text-white/45 uppercase">{label}</p>
-    <p className="font-display text-lg md:text-xl font-black text-white">{value}</p>
+    <p className="font-display text-base font-black text-white md:text-lg">{value}</p>
   </div>
 );
 
@@ -852,7 +784,7 @@ const EventsPage = () => {
         accent="Event Management"
         subHeader={<EventSubNav eventId={eventId} />}
       >
-        <section className="px-4 md:px-6 pb-20">
+        <section className="px-4 pb-12 sm:px-5 lg:px-6">
           <div className="mx-auto max-w-7xl">
             <CyberCard className="p-6 md:p-8">
               <p className="font-display text-xl md:text-2xl font-black uppercase text-white">Loading Event Data...</p>
@@ -868,7 +800,7 @@ const EventsPage = () => {
       accent="Event Management"
       subHeader={<EventSubNav eventId={eventId} />}
     >
-      <section className="px-4 md:px-6 pb-20">
+      <section className="px-4 pb-12 sm:px-5 lg:px-6">
         <div className="mx-auto max-w-7xl">
           {/* Dynamic Title */}
           <ContextualPageTitle activeTab={activeTab} summary={summary} auction={auction} />

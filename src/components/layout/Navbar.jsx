@@ -8,16 +8,12 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b border-primary/20 bg-black/40 backdrop-blur-md shadow-[0_4px_30px_rgba(255,0,0,0.15)]">
-      <nav className="mx-auto flex h-24 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
+    <header className="fixed top-0 left-0 z-50 w-full border-b border-primary/20 bg-black/60 backdrop-blur-md shadow-[0_4px_24px_rgba(255,0,0,0.12)]">
+      <nav className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-5 lg:px-6">
         <Link to="/" className="group flex items-center gap-3">
           <div className="relative">
             <div className="absolute -inset-1 bg-primary/20 opacity-0 blur transition-opacity group-hover:opacity-100" />
-            <img
-              src="/image.png"
-              alt="Nightmare Esports logo"
-              className="relative h-10 w-10 rounded object-cover ring-2 ring-primary/30 transition-all group-hover:ring-primary"
-            />
+            <img src="/image.png" alt="Nightmare Esports logo" className="relative h-9 w-9 rounded object-cover ring-2 ring-primary/30 transition-all group-hover:ring-primary" />
           </div>
           <div className="leading-none">
             <div className="font-display text-sm font-black tracking-[0.12em] text-primary">NIGHTMARE</div>
@@ -25,13 +21,13 @@ const Navbar = () => {
           </div>
         </Link>
 
-        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
+        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-7 lg:flex">
           {NAV_LINKS.map((link) => (
             <NavLink
               key={link.name}
               to={link.path}
               className={({ isActive }) =>
-                `relative text-[11px] font-bold tracking-[0.2em] uppercase transition-colors ${
+                `relative text-[10px] font-bold tracking-[0.2em] uppercase transition-colors ${
                   isActive ? 'text-primary' : 'text-white/80 hover:text-primary'
                 }`
               }
