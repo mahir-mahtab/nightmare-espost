@@ -31,6 +31,20 @@ const toOptional = (value) => {
   return text ? text : undefined;
 };
 
+const toLocalDateTimeInput = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('admin-token');
@@ -1043,18 +1057,14 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
   const [controlAmount, setControlAmount] = useState(0);
   const [createForm, setCreateForm] = useState({
     playerId: players[0]?.id || '',
-    currentBid: 0,
-    currentOwnerId: '',
     status: 'PENDING',
-    timeLeft: 30,
+    endsAt: '',
     lotOrder: 1,
   });
   const [editForm, setEditForm] = useState({
     playerId: '',
-    currentBid: 0,
-    currentOwnerId: '',
     status: 'PENDING',
-    timeLeft: 30,
+    endsAt: '',
     lotOrder: 1,
   });
 
@@ -1094,10 +1104,8 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
         },
         body: JSON.stringify({
           playerId: createForm.playerId,
-          currentBid: Number(createForm.currentBid),
-          currentOwnerId: createForm.currentOwnerId || undefined,
           status: createForm.status,
-          timeLeft: Number(createForm.timeLeft),
+          endsAt: createForm.endsAt || undefined,
           lotOrder: Number(createForm.lotOrder),
         }),
       });
@@ -1107,10 +1115,8 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       }
       setCreateForm({
         playerId: players[0]?.id || '',
-        currentBid: 0,
-        currentOwnerId: '',
         status: 'PENDING',
-        timeLeft: 30,
+        endsAt: '',
         lotOrder: 1,
       });
       onChanged('Auction lot created successfully');
@@ -1125,10 +1131,8 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
     setEditingId(lot.id);
     setEditForm({
       playerId: lot.playerId,
-      currentBid: Number(lot.currentBid || 0),
-      currentOwnerId: lot.currentOwnerId || '',
       status: lot.status || 'PENDING',
-      timeLeft: Number(lot.timeLeft || 0),
+      endsAt: toLocalDateTimeInput(lot.endsAt),
       lotOrder: Number(lot.lotOrder || 1),
     });
   };
@@ -1144,10 +1148,8 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
         },
         body: JSON.stringify({
           playerId: editForm.playerId,
-          currentBid: Number(editForm.currentBid),
-          currentOwnerId: editForm.currentOwnerId || undefined,
           status: editForm.status,
-          timeLeft: Number(editForm.timeLeft),
+          endsAt: editForm.endsAt || null,
           lotOrder: Number(editForm.lotOrder),
         }),
       });
@@ -1386,17 +1388,10 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
         </button>
       </div>
 
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-6">
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-5">
         <select value={createForm.playerId} onChange={(e) => setCreateForm({ ...createForm, playerId: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary">
           {players.map((player) => (
             <option key={player.id} value={player.id}>{player.name}</option>
-          ))}
-        </select>
-        <input type="number" value={createForm.currentBid} onChange={(e) => setCreateForm({ ...createForm, currentBid: Number(e.target.value || 0) })} placeholder="Current bid" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
-        <select value={createForm.currentOwnerId} onChange={(e) => setCreateForm({ ...createForm, currentOwnerId: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary">
-          <option value="">No owner</option>
-          {owners.map((owner) => (
-            <option key={owner.id} value={owner.id}>{owner.name}</option>
           ))}
         </select>
         <select value={createForm.status} onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary">
@@ -1405,6 +1400,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
           <option value="SOLD">SOLD</option>
           <option value="UNSOLD">UNSOLD</option>
         </select>
+        <input type="datetime-local" value={createForm.endsAt} onChange={(e) => setCreateForm({ ...createForm, endsAt: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="number" value={createForm.lotOrder} onChange={(e) => setCreateForm({ ...createForm, lotOrder: Number(e.target.value || 1) })} placeholder="Lot order" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <button type="button" disabled={creating || !createForm.playerId} onClick={handleCreate} className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50">
           {creating ? 'Creating...' : 'Add Lot'}
@@ -1412,7 +1408,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       </div>
 
       <DataTable
-        columns={['Lot ID', 'Order', 'Player', 'Current Bid', 'Owner', 'Status', 'Time Left', 'Actions']}
+        columns={['Lot ID', 'Order', 'Player', 'Current Bid', 'Owner', 'Status', 'Ends At', 'Time Left', 'Actions']}
         rows={lots.map((lot) => [
           lot.id,
           editingId === lot.id ? <input type="number" value={editForm.lotOrder} onChange={(e) => setEditForm({ ...editForm, lotOrder: Number(e.target.value || 1) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(lot.lotOrder),
@@ -1423,15 +1419,10 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
               ))}
             </select>
           ) : (lot.player?.name || lot.playerId),
-          editingId === lot.id ? <input type="number" value={editForm.currentBid} onChange={(e) => setEditForm({ ...editForm, currentBid: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(lot.currentBid),
+          toText(lot.currentBid),
           editingId === lot.id ? (
-            <select value={editForm.currentOwnerId} onChange={(e) => setEditForm({ ...editForm, currentOwnerId: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary">
-              <option value="">No owner</option>
-              {owners.map((owner) => (
-                <option key={owner.id} value={owner.id}>{owner.name}</option>
-              ))}
-            </select>
-          ) : (lot.currentOwner?.name || '-'),
+            <span className="text-white/60">Managed by live bids</span>
+          ) : (lot.currentOwnerName || '-'),
           editingId === lot.id ? (
             <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary">
               <option value="PENDING">PENDING</option>
@@ -1440,7 +1431,10 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
               <option value="UNSOLD">UNSOLD</option>
             </select>
           ) : lot.status,
-          editingId === lot.id ? <input type="number" value={editForm.timeLeft} onChange={(e) => setEditForm({ ...editForm, timeLeft: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : `${toText(lot.timeLeft)}s`,
+          editingId === lot.id
+            ? <input type="datetime-local" value={editForm.endsAt} onChange={(e) => setEditForm({ ...editForm, endsAt: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" />
+            : (lot.endsAt ? new Date(lot.endsAt).toLocaleString() : '-'),
+          `${toText(lot.timeLeft)}s`,
           editingId === lot.id ? (
             <div className="flex gap-2">
               <button type="button" onClick={() => handleUpdate(lot.id)} className="rounded border border-primary/60 px-2 py-1 text-[10px] font-bold uppercase text-primary">Save</button>

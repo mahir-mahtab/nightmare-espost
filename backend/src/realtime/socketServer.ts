@@ -11,10 +11,19 @@ const eventRoom = (eventId: string) => `${SOCKET_PREFIX}${eventId}`;
 
 let io: SocketIOServer | null = null;
 let timerHandle: NodeJS.Timeout | null = null;
+let tickerInFlight = false;
 
 const getSocketEventId = (socket: { data?: any }): string | null => {
   const eventId = socket.data?.eventId;
   return typeof eventId === 'string' ? eventId : null;
+};
+
+const computeTimeLeft = (activeLotEndsAt: number | null) => {
+  if (!activeLotEndsAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((activeLotEndsAt - Date.now()) / 1000));
 };
 
 const emitAuctionState = async (eventId: string) => {
@@ -41,16 +50,13 @@ const emitActiveLotChanged = (eventId: string, fromLotId: string | null, toLotId
   });
 };
 
-const startGlobalTicker = () => {
-  if (timerHandle) {
+const runTickerCycle = async () => {
+  if (!io || tickerInFlight) {
     return;
   }
 
-  timerHandle = setInterval(async () => {
-    if (!io) {
-      return;
-    }
-
+  tickerInFlight = true;
+  try {
     const sockets = await io.fetchSockets();
     const eventIds = new Set<string>();
 
@@ -66,9 +72,10 @@ const startGlobalTicker = () => {
         const tickResult = await auctionService.tickAuction(eventId);
         io.to(eventRoom(eventId)).emit('timer_tick', {
           eventId,
-          timeLeft: tickResult.runtime.timeLeft,
+          timeLeft: computeTimeLeft(tickResult.runtime.activeLotEndsAt),
           activeLotId: tickResult.runtime.activeLotId,
           activeLotEndsAt: tickResult.runtime.activeLotEndsAt || null,
+          serverNow: Date.now(),
         });
 
         if (tickResult.progressed) {
@@ -88,7 +95,24 @@ const startGlobalTicker = () => {
         logger.warn(`Ticker skipped for event ${eventId}: ${error?.message || 'unknown error'}`);
       }
     }
-  }, 1000);
+  } finally {
+    tickerInFlight = false;
+  }
+};
+
+const startGlobalTicker = () => {
+  if (timerHandle) {
+    return;
+  }
+
+  const schedule = () => {
+    timerHandle = setTimeout(async () => {
+      await runTickerCycle();
+      schedule();
+    }, 1000);
+  };
+
+  schedule();
 };
 
 export const socketServer = {
@@ -128,6 +152,9 @@ export const socketServer = {
         return;
       }
 
+      socket.join(eventRoom(eventId));
+      emitAuctionState(eventId).catch(() => {});
+
       socket.on('join_event', async (payload: { eventId?: string }) => {
         try {
           const requestedEvent = payload?.eventId;
@@ -138,6 +165,7 @@ export const socketServer = {
 
           socket.join(eventRoom(eventId));
           await emitAuctionState(eventId);
+          socket.emit('joined_event', { eventId });
         } catch (error: any) {
           socket.emit('auction_error', {
             message: error?.message || 'Failed to join event room',

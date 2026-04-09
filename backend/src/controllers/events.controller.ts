@@ -91,6 +91,8 @@ export const eventsController = {
       res.json({
         success: true,
         data: {
+          eventId: event.id,
+          eventSlug: event.slug,
           sessionToken: token,
           displayName,
           role,
@@ -205,6 +207,8 @@ export const eventsController = {
         data: {
           activeAuctionId: auctionState.activeLotId,
           lotDuration: auctionState.lotDuration,
+          activeLotEndsAt: auctionState.activeLotEndsAt,
+          timeLeft: auctionState.timeLeft,
           lots: auctionState.lots,
         },
       });

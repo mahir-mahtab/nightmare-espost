@@ -125,7 +125,6 @@ export const eventService = {
         auctionLots: {
           include: {
             player: true,
-            currentOwner: true,
           },
           orderBy: { lotOrder: 'asc' },
         },
@@ -233,10 +232,9 @@ export const eventService = {
           data: {
             eventId,
             playerId: player.id,
-            currentBid: player.basePrice,
             status: AuctionStatus.PENDING,
             lotOrder: index + 1,
-            timeLeft: 30,
+            endsAt: null,
           },
         })
       )
@@ -419,13 +417,21 @@ export const eventService = {
     const lots = await prisma.auctionLot.findMany({
       where: { eventId: event.id },
       include: {
-        player: true,
-        currentOwner: true,
+        player: {
+          include: {
+            soldToTeam: {
+              include: {
+                owner: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { lotOrder: 'asc' },
     });
 
     const activeLot = lots.find((lot: any) => lot.status === AuctionStatus.ACTIVE);
+    const now = Date.now();
 
     return {
       activeAuctionId: activeLot?.id || null,
@@ -434,11 +440,20 @@ export const eventService = {
         id: lot.id,
         playerId: lot.playerId,
         playerName: lot.player.name,
-        currentBid: lot.currentBid,
-        currentOwnerId: lot.currentOwnerId,
-        currentOwnerName: lot.currentOwner?.name,
+        currentBid: lot.status === AuctionStatus.SOLD
+          ? (lot.player.finalPrice ?? lot.player.basePrice)
+          : lot.player.basePrice,
+        currentOwnerId: lot.status === AuctionStatus.SOLD
+          ? (lot.player.soldToTeam?.ownerId || null)
+          : null,
+        currentOwnerName: lot.status === AuctionStatus.SOLD
+          ? (lot.player.soldToTeam?.owner?.name || null)
+          : null,
         status: lot.status,
-        timeLeft: lot.timeLeft,
+        timeLeft: lot.endsAt
+          ? Math.max(0, Math.ceil((new Date(lot.endsAt).getTime() - now) / 1000))
+          : 0,
+        endsAt: lot.endsAt,
         lotOrder: lot.lotOrder,
       })),
     };
@@ -447,10 +462,6 @@ export const eventService = {
   async createAuctionLot(eventId: string, data: any) {
     await this.getEventById(eventId);
     await this.getPlayerById(eventId, data.playerId);
-
-    if (data.currentOwnerId) {
-      await this.getOwnerById(eventId, data.currentOwnerId);
-    }
 
     const existingOrder = await prisma.auctionLot.findFirst({
       where: { eventId, lotOrder: data.lotOrder },
@@ -464,10 +475,8 @@ export const eventService = {
       data: {
         eventId,
         playerId: data.playerId,
-        currentBid: data.currentBid,
-        currentOwnerId: data.currentOwnerId,
         status: data.status,
-        timeLeft: data.timeLeft,
+        endsAt: data.endsAt ? new Date(data.endsAt) : null,
         lotOrder: data.lotOrder,
       },
     });
@@ -492,10 +501,6 @@ export const eventService = {
       await this.getPlayerById(eventId, data.playerId);
     }
 
-    if (data.currentOwnerId) {
-      await this.getOwnerById(eventId, data.currentOwnerId);
-    }
-
     if (data.lotOrder) {
       const existingOrder = await prisma.auctionLot.findFirst({
         where: {
@@ -512,7 +517,10 @@ export const eventService = {
 
     return await prisma.auctionLot.update({
       where: { id: lotId },
-      data,
+      data: {
+        ...data,
+        endsAt: data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined,
+      },
     });
   },
 

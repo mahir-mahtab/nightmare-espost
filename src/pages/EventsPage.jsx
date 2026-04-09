@@ -443,11 +443,25 @@ const BidMeta = ({ label, value }) => (
   </div>
 );
 
+const computeSecondsLeft = (endsAt) => {
+  if (!endsAt) {
+    return 0;
+  }
+
+  const endMs = typeof endsAt === 'number' ? endsAt : new Date(endsAt).getTime();
+  if (!Number.isFinite(endMs)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((endMs - Date.now()) / 1000));
+};
+
 const EventsPage = () => {
   const navigate = useNavigate();
   const { eventId, tab } = useParams();
   const activeTab = tab || 'event';
   const { session, logout } = useEventAuth(eventId);
+  const sessionEventId = session?.eventId || '';
   const canBid = session?.role === 'owner' && Boolean(session?.ownerId);
   const adminToken = localStorage.getItem('admin-token');
   const canAdminControl = Boolean(adminToken);
@@ -575,14 +589,30 @@ const EventsPage = () => {
 
     const socketBaseUrl = config.apiUrl.replace(/\/api$/, '');
     const socket = io(socketBaseUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 20,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 4000,
       auth: {
         token: session.sessionToken,
       },
     });
 
+    const isSameEvent = (incomingEventId) => {
+      if (!incomingEventId) {
+        return false;
+      }
+
+      if (sessionEventId && incomingEventId === sessionEventId) {
+        return true;
+      }
+
+      return incomingEventId === eventId;
+    };
+
     const syncAuctionState = (state) => {
-      if (!state || state.eventId !== session.eventId) {
+      if (!state || !isSameEvent(state.eventId)) {
         return;
       }
 
@@ -591,7 +621,16 @@ const EventsPage = () => {
         lotDuration: state.lotDuration,
         activeLotEndsAt: state.activeLotEndsAt || null,
         timeLeft: Number(state.timeLeft || 0),
-        lots: state.lots || [],
+        lots: (state.lots || []).map((lot) => {
+          if (lot.id !== state.activeLotId) {
+            return lot;
+          }
+
+          return {
+            ...lot,
+            timeLeft: computeSecondsLeft(state.activeLotEndsAt || lot.endsAt),
+          };
+        }),
       });
 
       if (state.activeLotId) {
@@ -601,11 +640,19 @@ const EventsPage = () => {
 
     socket.on('connect', () => {
       setSocketConnected(true);
-      socket.emit('join_event', { eventId: session.eventId });
+      socket.emit('join_event', { eventId: sessionEventId || eventId });
     });
 
     socket.on('disconnect', () => {
       setSocketConnected(false);
+    });
+
+    socket.on('connect_error', () => {
+      setSocketConnected(false);
+    });
+
+    socket.on('reconnect', () => {
+      socket.emit('join_event', { eventId: sessionEventId || eventId });
     });
 
     socket.on('auction_state', (state) => {
@@ -613,7 +660,7 @@ const EventsPage = () => {
     });
 
     socket.on('timer_tick', ({ eventId: incomingEventId, timeLeft, activeLotId, activeLotEndsAt }) => {
-      if (incomingEventId !== session.eventId) {
+      if (!isSameEvent(incomingEventId)) {
         return;
       }
 
@@ -643,8 +690,16 @@ const EventsPage = () => {
       });
     });
 
-    socket.on('new_bid', ({ eventId: incomingEventId, lotId, ownerId, amount, timeLeft }) => {
-      if (incomingEventId !== session.eventId) {
+    socket.on('joined_event', ({ eventId: incomingEventId }) => {
+      if (!isSameEvent(incomingEventId)) {
+        return;
+      }
+
+      setSocketConnected(true);
+    });
+
+    socket.on('new_bid', ({ eventId: incomingEventId, lotId, ownerId, amount, timeLeft, activeLotEndsAt }) => {
+      if (!isSameEvent(incomingEventId)) {
         return;
       }
 
@@ -655,13 +710,14 @@ const EventsPage = () => {
 
         return {
           ...prev,
+          activeLotEndsAt: activeLotEndsAt || prev.activeLotEndsAt || null,
           lots: (prev.lots || []).map((lot) => (
             lot.id === lotId
               ? {
                 ...lot,
                 currentOwnerId: ownerId,
                 currentBid: amount,
-                timeLeft: Number(timeLeft || lot.timeLeft || 0),
+                timeLeft: Number(timeLeft || computeSecondsLeft(activeLotEndsAt || prev.activeLotEndsAt) || lot.timeLeft || 0),
               }
               : lot
           )),
@@ -670,7 +726,7 @@ const EventsPage = () => {
     });
 
     socket.on('lot_status_changed', ({ eventId: incomingEventId, lot }) => {
-      if (incomingEventId !== session.eventId || !lot) {
+      if (!isSameEvent(incomingEventId) || !lot) {
         return;
       }
 
@@ -687,14 +743,13 @@ const EventsPage = () => {
     });
 
     socket.on('active_lot_changed', ({ eventId: incomingEventId, newLotId }) => {
-      if (incomingEventId !== session.eventId) {
+      if (!isSameEvent(incomingEventId)) {
         return;
       }
 
       if (newLotId) {
         setSelectedAuctionId(newLotId);
       }
-      refreshBoard().catch(() => {});
     });
 
     socket.on('auction_error', (payload) => {
@@ -704,7 +759,37 @@ const EventsPage = () => {
     return () => {
       socket.disconnect();
     };
-  }, [eventId, session, refreshBoard]);
+  }, [eventId, session, sessionEventId]);
+
+  useEffect(() => {
+    if (!auction?.activeAuctionId) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      setAuction((prev) => {
+        if (!prev?.activeAuctionId) {
+          return prev;
+        }
+
+        const activeLot = (prev.lots || []).find((lot) => lot.id === prev.activeAuctionId);
+        const endTime = prev.activeLotEndsAt || activeLot?.endsAt || null;
+        const secondsLeft = computeSecondsLeft(endTime);
+
+        return {
+          ...prev,
+          timeLeft: secondsLeft,
+          lots: (prev.lots || []).map((lot) => (
+            lot.id === prev.activeAuctionId
+              ? { ...lot, timeLeft: secondsLeft, endsAt: lot.endsAt || endTime }
+              : lot
+          )),
+        };
+      });
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [auction?.activeLotEndsAt, auction?.activeAuctionId, auction?.lots]);
 
   useEffect(() => {
     if (!error) {

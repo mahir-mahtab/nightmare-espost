@@ -50,6 +50,7 @@ export const auctionController = {
         ownerId,
         amount: bidResult.lot.currentBid,
         timeLeft: bidResult.timeLeft,
+        activeLotEndsAt: bidResult.activeLotEndsAt,
       });
       await socketServer.emitFullAuctionState(bidResult.eventId);
 

@@ -69,7 +69,6 @@ model Owner {
   createdAt  DateTime @default(now()) @map("created_at")
 
   teams          Team[]
-  auctionLots    AuctionLot[]
 
   @@index([eventId])
   @@map("owners")
@@ -104,19 +103,16 @@ enum PlayerStatus {
 }
 
 model AuctionLot {
-  id             String         @id @default(uuid())
-  eventId        String         @map("event_id")
-  event          Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  playerId       String         @map("player_id")
-  player         Player         @relation(fields: [playerId], references: [id])
-  currentBid     Int            @default(0) @map("current_bid")
-  currentOwnerId String?        @map("current_owner_id")
-  currentOwner   Owner?         @relation(fields: [currentOwnerId], references: [id])
-  status         AuctionStatus  @default(PENDING)
-  timeLeft       Int            @default(30) @map("time_left")
-  lotOrder       Int            @map("lot_order")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  id         String         @id @default(uuid())
+  eventId    String         @map("event_id")
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  playerId   String         @map("player_id")
+  player     Player         @relation(fields: [playerId], references: [id])
+  status     AuctionStatus  @default(PENDING)
+  endsAt     DateTime?      @map("ends_at")
+  lotOrder   Int            @map("lot_order")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
 
   @@index([eventId])
   @@index([status])

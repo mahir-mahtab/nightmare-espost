@@ -109,7 +109,8 @@ export const eventAuthService = {
 
     const expiresAt = decodeJwtExp(sessionToken) || Date.now() + (1000 * 60 * 60 * 8);
     const session = {
-      eventId,
+      eventId: payload?.data?.eventId || eventId,
+      eventSlug: payload?.data?.eventSlug || eventId,
       displayName: payload?.data?.displayName || displayName.trim(),
       role: payload?.data?.role || role,
       ownerId: payload?.data?.ownerId || (role === 'owner' ? ownerId : ''),

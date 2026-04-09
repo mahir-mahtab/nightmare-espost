@@ -51,10 +51,14 @@ export const updatePlayerSchema = createPlayerSchema.partial().extend({
 
 export const createAuctionLotSchema = z.object({
   playerId: z.string().uuid(),
-  currentBid: z.number().int().min(0).default(0),
-  currentOwnerId: z.string().uuid().optional(),
   status: z.enum(['PENDING', 'ACTIVE', 'SOLD', 'UNSOLD']).default('PENDING'),
-  timeLeft: z.number().int().min(0).default(30),
+  endsAt: z.string().optional().refine((value) => {
+    if (!value) {
+      return true;
+    }
+
+    return !Number.isNaN(Date.parse(value));
+  }, 'Invalid endsAt datetime'),
   lotOrder: z.number().int().min(1),
 });
 
