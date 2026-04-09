@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { io } from 'socket.io-client';
@@ -525,7 +525,7 @@ const EventsPage = () => {
     }
   }, [canBid, session, eventId]);
 
-  const refreshBoard = async () => {
+  const refreshBoard = useCallback(async () => {
     const [auctionPayload, allPlayersPayload, filteredPlayers] = await Promise.all([
       eventsService.getAuctionBoard(eventId, session?.sessionToken),
       eventsService.listPlayers(eventId, session?.sessionToken),
@@ -540,7 +540,7 @@ const EventsPage = () => {
     setAuction(auctionPayload);
     setAllPlayers(allPlayersPayload);
     setPlayers(filteredPlayers);
-  };
+  }, [eventId, session, search, roleFilter, teamFilter, statusFilter]);
 
   useEffect(() => {
     loadBaseData();
@@ -810,8 +810,13 @@ const EventsPage = () => {
   };
 
   const handleFinalizePurchase = async () => {
-    if (!canAdminControl || !session?.ownerId) {
+    if (!canAdminControl) {
       setError('Admin control token required');
+      return;
+    }
+
+    if (!selectedOwnerId) {
+      setError('Select owner before finalizing purchase');
       return;
     }
 
@@ -820,7 +825,7 @@ const EventsPage = () => {
         eventId,
         adminToken,
         auctionId: selectedAuctionId,
-        ownerId: session.ownerId,
+        ownerId: selectedOwnerId,
         amount: Number(bidAmount),
       });
       await refreshBoard();

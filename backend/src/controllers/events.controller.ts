@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/authService.js';
 import { eventService } from '../services/eventService.js';
+import { auctionService } from '../services/auctionService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { eventLoginSchema } from '../utils/validators.js';
 
@@ -197,11 +198,15 @@ export const eventsController = {
   async getAuctionBoard(req: Request, res: Response, next: NextFunction) {
     try {
       const { eventId } = req.params;
-      const auctionBoard = await eventService.getAuctionBoard(eventId);
+      const auctionState = await auctionService.getAuctionState(eventId);
 
       res.json({
         success: true,
-        data: auctionBoard,
+        data: {
+          activeAuctionId: auctionState.activeLotId,
+          lotDuration: auctionState.lotDuration,
+          lots: auctionState.lots,
+        },
       });
     } catch (error) {
       next(error);

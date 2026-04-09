@@ -9,6 +9,7 @@ import AboutPage from './pages/AboutPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import ProtectedEventRoute from './components/routing/ProtectedEventRoute.jsx';
+import ProtectedAdminRoute from './components/routing/ProtectedAdminRoute.jsx';
 
 function App() {
   return (
@@ -30,7 +31,14 @@ function App() {
         />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          }
+        />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </div>

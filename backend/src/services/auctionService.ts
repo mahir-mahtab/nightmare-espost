@@ -9,21 +9,6 @@ const redisKey = {
   lock: (eventId: string) => `auction:${eventId}:lock`,
 };
 
-const parseAuctionStatus = (status: string) => {
-  switch (status) {
-    case 'PENDING':
-      return AuctionStatus.PENDING;
-    case 'ACTIVE':
-      return AuctionStatus.ACTIVE;
-    case 'SOLD':
-      return AuctionStatus.SOLD;
-    case 'UNSOLD':
-      return AuctionStatus.UNSOLD;
-    default:
-      throw new AppError('Invalid lot status', 400);
-  }
-};
-
 interface AuctionRuntimeState {
   eventId: string;
   activeLotId: string | null;
@@ -33,6 +18,13 @@ interface AuctionRuntimeState {
   activeLotEndsAt: number | null;
   timeLeft: number;
   lastUpdatedAt: number;
+  liveBids: Record<string, LiveBidSnapshot>;
+}
+
+interface LiveBidSnapshot {
+  ownerId: string;
+  amount: number;
+  updatedAt: number;
 }
 
 const buildInitialState = (eventId: string, lotDuration: number): AuctionRuntimeState => ({
@@ -44,7 +36,24 @@ const buildInitialState = (eventId: string, lotDuration: number): AuctionRuntime
   activeLotEndsAt: null,
   timeLeft: lotDuration,
   lastUpdatedAt: Date.now(),
+  liveBids: {},
 });
+
+const normalizeRuntimeState = (
+  raw: Partial<AuctionRuntimeState>,
+  eventId: string,
+  lotDuration: number,
+): AuctionRuntimeState => {
+  const base = buildInitialState(eventId, lotDuration);
+
+  return {
+    ...base,
+    ...raw,
+    eventId,
+    lotDuration,
+    liveBids: raw?.liveBids && typeof raw.liveBids === 'object' ? raw.liveBids : {},
+  };
+};
 
 const computeTimeLeft = (activeLotEndsAt: number | null) => {
   if (!activeLotEndsAt) {
@@ -68,13 +77,13 @@ const withLock = async <T>(eventId: string, task: () => Promise<T>) => {
   }
 };
 
-const toBoardLot = (lot: any) => ({
+const toBoardLot = (lot: any, liveBid?: LiveBidSnapshot, liveOwnerName?: string) => ({
   id: lot.id,
   playerId: lot.playerId,
   playerName: lot.player?.name,
-  currentBid: lot.currentBid,
-  currentOwnerId: lot.currentOwnerId,
-  currentOwnerName: lot.currentOwner?.name,
+  currentBid: liveBid?.amount ?? lot.currentBid,
+  currentOwnerId: liveBid?.ownerId ?? lot.currentOwnerId,
+  currentOwnerName: liveBid ? (liveOwnerName || lot.currentOwner?.name) : lot.currentOwner?.name,
   status: lot.status,
   timeLeft: lot.timeLeft,
   lotOrder: lot.lotOrder,
@@ -91,12 +100,165 @@ export const auctionService = {
     }
 
     try {
-      return JSON.parse(raw) as AuctionRuntimeState;
+      return normalizeRuntimeState(JSON.parse(raw) as Partial<AuctionRuntimeState>, eventId, lotDuration);
     } catch {
       const initial = buildInitialState(eventId, lotDuration);
       await redis.set(key, JSON.stringify(initial));
       return initial;
     }
+  },
+
+  async mergeLiveBidsIntoLots(eventId: string, lots: any[], runtime: AuctionRuntimeState) {
+    const liveBids = runtime.liveBids || {};
+    const liveOwnerIds = [
+      ...new Set(
+        Object.values(liveBids)
+          .map((item) => item?.ownerId)
+          .filter(Boolean),
+      ),
+    ] as string[];
+
+    const owners = liveOwnerIds.length
+      ? await prisma.owner.findMany({
+        where: {
+          eventId,
+          id: { in: liveOwnerIds },
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      })
+      : [];
+
+    const ownerNameById = Object.fromEntries(owners.map((owner) => [owner.id, owner.name]));
+
+    return (lots || []).map((lot) => {
+      const liveBid = liveBids[lot.id];
+      if (!liveBid) {
+        return lot;
+      }
+
+      return {
+        ...lot,
+        currentBid: liveBid.amount,
+        currentOwnerId: liveBid.ownerId,
+        currentOwnerName: ownerNameById[liveBid.ownerId] || lot.currentOwnerName || null,
+      };
+    });
+  },
+
+  async settleLot(
+    event: { id: string; auctionWindowSeconds: number },
+    lotId: string,
+    runtime: AuctionRuntimeState,
+    options: {
+      forcedStatus?: 'SOLD' | 'UNSOLD';
+      overrideOwnerId?: string;
+      overrideAmount?: number;
+    } = {},
+  ) {
+    const lot = await prisma.auctionLot.findFirst({
+      where: { id: lotId, eventId: event.id },
+      include: {
+        player: true,
+        currentOwner: true,
+      },
+    });
+
+    if (!lot) {
+      throw new AppError('Auction lot not found', 404);
+    }
+
+    if (lot.status === AuctionStatus.SOLD || lot.status === AuctionStatus.UNSOLD) {
+      delete runtime.liveBids[lot.id];
+      return {
+        lot: toBoardLot(lot),
+        settled: false,
+        alreadySettled: true,
+      };
+    }
+
+    const liveBid = runtime.liveBids[lot.id];
+    const finalOwnerId = options.overrideOwnerId ?? liveBid?.ownerId ?? lot.currentOwnerId ?? null;
+    const finalAmount = options.overrideAmount ?? liveBid?.amount ?? lot.currentBid;
+    const finalStatus = options.forcedStatus || (finalOwnerId ? AuctionStatus.SOLD : AuctionStatus.UNSOLD);
+
+    if (finalStatus === AuctionStatus.SOLD && !finalOwnerId) {
+      throw new AppError('Cannot settle SOLD without a winning owner', 400);
+    }
+
+    const { updatedLot, player } = await prisma.$transaction(async (tx) => {
+      let winningTeamId: string | null = null;
+
+      if (finalStatus === AuctionStatus.SOLD) {
+        const team = await tx.team.findFirst({
+          where: { eventId: event.id, ownerId: finalOwnerId || undefined },
+        });
+
+        if (!team) {
+          throw new AppError('Winning owner team not found', 400);
+        }
+
+        if (team.coinsLeft < finalAmount) {
+          throw new AppError('Winning team has insufficient coins', 400);
+        }
+
+        await tx.team.update({
+          where: { id: team.id },
+          data: {
+            coinsLeft: {
+              decrement: finalAmount,
+            },
+          },
+        });
+
+        winningTeamId = team.id;
+      }
+
+      const updatedLotRecord = await tx.auctionLot.update({
+        where: { id: lot.id },
+        data: {
+          currentBid: finalAmount,
+          currentOwnerId: finalStatus === AuctionStatus.SOLD ? finalOwnerId : null,
+          status: finalStatus,
+          timeLeft: 0,
+        },
+        include: {
+          player: true,
+          currentOwner: true,
+        },
+      });
+
+      const updatedPlayer = await tx.player.update({
+        where: { id: lot.playerId },
+        data: finalStatus === AuctionStatus.SOLD
+          ? {
+            status: PlayerStatus.SOLD,
+            soldToTeamId: winningTeamId,
+            finalPrice: finalAmount,
+          }
+          : {
+            status: PlayerStatus.UNSOLD,
+            soldToTeamId: null,
+            finalPrice: null,
+          },
+      });
+
+      return {
+        updatedLot: updatedLotRecord,
+        player: updatedPlayer,
+      };
+    });
+
+    delete runtime.liveBids[lot.id];
+
+    return {
+      lot: toBoardLot(updatedLot),
+      player,
+      settled: true,
+      alreadySettled: false,
+    };
   },
 
   async saveRuntimeState(eventId: string, state: AuctionRuntimeState) {
@@ -110,6 +272,7 @@ export const auctionService = {
     const event = await eventService.getEvent(eventIdOrSlug);
     const board = await eventService.getAuctionBoard(event.id);
     const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
+    const lots = await this.mergeLiveBidsIntoLots(event.id, board.lots, runtime);
 
     return {
       eventId: event.id,
@@ -119,7 +282,7 @@ export const auctionService = {
       lotDuration: runtime.lotDuration,
       activeLotEndsAt: runtime.activeLotEndsAt,
       timeLeft: computeTimeLeft(runtime.activeLotEndsAt),
-      lots: board.lots,
+      lots,
     };
   },
 
@@ -149,7 +312,10 @@ export const auctionService = {
         throw new AppError('Lot is not active for bidding', 400);
       }
 
-      if (amount <= lot.currentBid) {
+      const liveBid = runtime.liveBids[targetLotId];
+      const currentBid = liveBid?.amount ?? lot.currentBid;
+
+      if (amount <= currentBid) {
         throw new AppError('Bid must be greater than current bid', 400);
       }
 
@@ -173,22 +339,18 @@ export const auctionService = {
         throw new AppError('Insufficient coins for this bid', 400);
       }
 
-      const updated = await prisma.auctionLot.update({
-        where: { id: lot.id },
-        data: {
-          currentBid: amount,
-          currentOwnerId: owner.id,
-        },
-        include: {
-          player: true,
-          currentOwner: true,
-        },
-      });
+      runtime.liveBids[lot.id] = {
+        ownerId: owner.id,
+        amount,
+        updatedAt: Date.now(),
+      };
 
       await this.saveRuntimeState(event.id, runtime);
 
+      const liveOwnerName = owner.name;
+
       return {
-        lot: toBoardLot(updated),
+        lot: toBoardLot(lot, runtime.liveBids[lot.id], liveOwnerName),
         eventId: event.id,
         timeLeft: computeTimeLeft(runtime.activeLotEndsAt),
       };
@@ -202,99 +364,69 @@ export const auctionService = {
       const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
       const lot = await prisma.auctionLot.findFirst({
         where: { id: lotId, eventId: event.id },
-        include: { player: true },
+        include: { player: true, currentOwner: true },
       });
 
       if (!lot) {
         throw new AppError('Auction lot not found', 404);
       }
 
-      const auctionStatus = parseAuctionStatus(status);
-
-      if (auctionStatus === AuctionStatus.SOLD && !lot.currentOwnerId) {
-        throw new AppError('Cannot mark SOLD without a winning owner', 400);
-      }
-
-      const updated = await prisma.$transaction(async (tx) => {
-        const updatedLot = await tx.auctionLot.update({
-          where: { id: lot.id },
-          data: {
-            status: auctionStatus,
-            timeLeft: auctionStatus === AuctionStatus.ACTIVE ? event.auctionWindowSeconds : 0,
-          },
-          include: {
-            player: true,
-            currentOwner: true,
-          },
-        });
-
-        if (auctionStatus === AuctionStatus.SOLD) {
-          const team = await tx.team.findFirst({
-            where: {
-              eventId: event.id,
-              ownerId: lot.currentOwnerId || undefined,
-            },
-          });
-
-          if (!team) {
-            throw new AppError('Winning owner team not found', 400);
-          }
-
-          if (team.coinsLeft < lot.currentBid) {
-            throw new AppError('Winning team has insufficient coins', 400);
-          }
-
-          await tx.team.update({
-            where: { id: team.id },
+      if (status === 'ACTIVE') {
+        await prisma.$transaction([
+          prisma.auctionLot.update({
+            where: { id: lot.id },
             data: {
-              coinsLeft: {
-                decrement: lot.currentBid,
-              },
+              status: AuctionStatus.ACTIVE,
+              timeLeft: event.auctionWindowSeconds,
             },
-          });
-
-          await tx.player.update({
-            where: { id: lot.playerId },
-            data: {
-              status: PlayerStatus.SOLD,
-              soldToTeamId: team.id,
-              finalPrice: lot.currentBid,
-            },
-          });
-        }
-
-        if (auctionStatus === AuctionStatus.UNSOLD) {
-          await tx.player.update({
-            where: { id: lot.playerId },
-            data: {
-              status: PlayerStatus.UNSOLD,
-              soldToTeamId: null,
-              finalPrice: null,
-            },
-          });
-        }
-
-        if (auctionStatus === AuctionStatus.ACTIVE) {
-          await tx.player.update({
+          }),
+          prisma.player.update({
             where: { id: lot.playerId },
             data: {
               status: PlayerStatus.ACTIVE,
+              soldToTeamId: null,
+              finalPrice: null,
             },
-          });
+          }),
+        ]);
+
+        delete runtime.liveBids[lot.id];
+        runtime.activeLotId = lot.id;
+        runtime.isRunning = true;
+        runtime.activeLotEndsAt = Date.now() + (event.auctionWindowSeconds * 1000);
+        runtime.timeLeft = computeTimeLeft(runtime.activeLotEndsAt);
+        await this.saveRuntimeState(event.id, runtime);
+
+        const refreshed = await prisma.auctionLot.findFirst({
+          where: { id: lot.id, eventId: event.id },
+          include: { player: true, currentOwner: true },
+        });
+
+        if (!refreshed) {
+          throw new AppError('Auction lot not found after activation', 404);
         }
 
-        return updatedLot;
+        return {
+          lot: toBoardLot(refreshed),
+          eventId: event.id,
+        };
+      }
+
+      const settled = await this.settleLot(event, lot.id, runtime, {
+        forcedStatus: status,
       });
 
-      runtime.activeLotId = auctionStatus === AuctionStatus.ACTIVE ? updated.id : runtime.activeLotId;
-      runtime.activeLotEndsAt = auctionStatus === AuctionStatus.ACTIVE
-        ? Date.now() + (event.auctionWindowSeconds * 1000)
-        : (runtime.activeLotId === updated.id ? null : runtime.activeLotEndsAt);
-      runtime.timeLeft = computeTimeLeft(runtime.activeLotEndsAt);
+      if (runtime.activeLotId === lot.id) {
+        runtime.activeLotId = null;
+        runtime.activeLotEndsAt = null;
+        runtime.timeLeft = 0;
+        runtime.isRunning = false;
+      }
+
       await this.saveRuntimeState(event.id, runtime);
 
       return {
-        lot: toBoardLot(updated),
+        lot: settled.lot,
         eventId: event.id,
       };
     });
@@ -311,67 +443,26 @@ export const auctionService = {
         throw new AppError('Auction lot not found', 404);
       }
 
-      const team = await prisma.team.findFirst({
-        where: { eventId: event.id, ownerId },
-      });
-
-      if (!team) {
-        throw new AppError('Owner has no team in this event', 400);
-      }
-
-      if (team.coinsLeft < amount) {
-        throw new AppError('Insufficient team coins', 400);
-      }
-
-      const updated = await prisma.$transaction(async (tx) => {
-        const updatedLot = await tx.auctionLot.update({
-          where: { id: lot.id },
-          data: {
-            currentBid: amount,
-            currentOwnerId: ownerId,
-            status: AuctionStatus.SOLD,
-            timeLeft: 0,
-          },
-          include: {
-            player: true,
-            currentOwner: true,
-          },
-        });
-
-        await tx.team.update({
-          where: { id: team.id },
-          data: {
-            coinsLeft: {
-              decrement: amount,
-            },
-          },
-        });
-
-        const player = await tx.player.update({
-          where: { id: lot.playerId },
-          data: {
-            status: PlayerStatus.SOLD,
-            soldToTeamId: team.id,
-            finalPrice: amount,
-          },
-        });
-
-        return { updatedLot, player };
-      });
-
       const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
+      const settled = await this.settleLot(event, lot.id, runtime, {
+        forcedStatus: AuctionStatus.SOLD,
+        overrideOwnerId: ownerId,
+        overrideAmount: amount,
+      });
+
       if (runtime.activeLotId === lot.id) {
         runtime.isRunning = false;
         runtime.activeLotId = null;
         runtime.activeLotEndsAt = null;
         runtime.timeLeft = 0;
-        await this.saveRuntimeState(event.id, runtime);
       }
+
+      await this.saveRuntimeState(event.id, runtime);
 
       return {
         eventId: event.id,
-        lot: toBoardLot(updated.updatedLot),
-        player: updated.player,
+        lot: settled.lot,
+        player: settled.player,
       };
     });
   },
@@ -410,16 +501,15 @@ export const auctionService = {
         });
       }
 
-      const runtime: AuctionRuntimeState = {
-        eventId: event.id,
-        activeLotId: lotToActivate.id,
-        isRunning: true,
-        autoProgress,
-        lotDuration: event.auctionWindowSeconds,
-        activeLotEndsAt: Date.now() + (event.auctionWindowSeconds * 1000),
-        timeLeft: event.auctionWindowSeconds,
-        lastUpdatedAt: Date.now(),
-      };
+      const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
+      runtime.activeLotId = lotToActivate.id;
+      runtime.isRunning = true;
+      runtime.autoProgress = autoProgress;
+      runtime.lotDuration = event.auctionWindowSeconds;
+      delete runtime.liveBids[lotToActivate.id];
+      runtime.activeLotEndsAt = Date.now() + (event.auctionWindowSeconds * 1000);
+      runtime.timeLeft = event.auctionWindowSeconds;
+      runtime.lastUpdatedAt = Date.now();
       await this.saveRuntimeState(event.id, runtime);
       await prisma.event.update({ where: { id: event.id }, data: { status: 'LIVE' } });
       return runtime;
@@ -439,118 +529,64 @@ export const auctionService = {
     });
   },
 
+  async _progressToNextLot(event: { id: string; auctionWindowSeconds: number }, runtime: AuctionRuntimeState) {
+    const currentLotId = runtime.activeLotId;
+    if (!currentLotId) {
+      throw new AppError('No active lot to progress from', 400);
+    }
+
+    const current = await prisma.auctionLot.findFirst({
+      where: { id: currentLotId, eventId: event.id },
+    });
+
+    if (!current) {
+      throw new AppError('Current active lot not found', 404);
+    }
+
+    if (current.status === AuctionStatus.ACTIVE) {
+      await this.settleLot(event, current.id, runtime);
+    }
+
+    const next = await prisma.auctionLot.findFirst({
+      where: {
+        eventId: event.id,
+        lotOrder: { gt: current.lotOrder },
+        status: { in: [AuctionStatus.PENDING, AuctionStatus.ACTIVE] },
+      },
+      orderBy: { lotOrder: 'asc' },
+    });
+
+    if (!next) {
+      runtime.isRunning = false;
+      runtime.autoProgress = false;
+      runtime.activeLotId = null;
+      runtime.activeLotEndsAt = null;
+      runtime.timeLeft = 0;
+      await this.saveRuntimeState(event.id, runtime);
+      await prisma.event.update({ where: { id: event.id }, data: { status: 'COMPLETED' } });
+      return { done: true, runtime };
+    }
+
+    await prisma.auctionLot.update({
+      where: { id: next.id },
+      data: { status: AuctionStatus.ACTIVE, timeLeft: event.auctionWindowSeconds },
+    });
+
+    delete runtime.liveBids[next.id];
+    runtime.activeLotId = next.id;
+    runtime.activeLotEndsAt = Date.now() + (event.auctionWindowSeconds * 1000);
+    runtime.timeLeft = event.auctionWindowSeconds;
+    runtime.isRunning = true;
+    await this.saveRuntimeState(event.id, runtime);
+
+    return { done: false, runtime, nextLotId: next.id };
+  },
+
   async nextLot(eventId: string) {
     return withLock(eventId, async () => {
       const event = await eventService.getEventById(eventId);
       const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
-
-      if (!runtime.activeLotId) {
-        throw new AppError('No active lot to progress from', 400);
-      }
-
-      const current = await prisma.auctionLot.findFirst({
-        where: { id: runtime.activeLotId, eventId: event.id },
-      });
-
-      if (!current) {
-        throw new AppError('Current active lot not found', 404);
-      }
-
-      if (current.status === AuctionStatus.ACTIVE) {
-        if (current.currentOwnerId) {
-          const team = await prisma.team.findFirst({
-            where: { eventId: event.id, ownerId: current.currentOwnerId },
-          });
-
-          if (!team) {
-            throw new AppError('Winning owner team not found', 400);
-          }
-
-          if (team.coinsLeft < current.currentBid) {
-            throw new AppError('Winning team has insufficient coins', 400);
-          }
-
-          await prisma.$transaction([
-            prisma.auctionLot.update({
-              where: { id: current.id },
-              data: {
-                status: AuctionStatus.SOLD,
-                timeLeft: 0,
-              },
-            }),
-            prisma.team.update({
-              where: { id: team.id },
-              data: { coinsLeft: { decrement: current.currentBid } },
-            }),
-            prisma.player.update({
-              where: { id: current.playerId },
-              data: {
-                status: PlayerStatus.SOLD,
-                soldToTeamId: team.id,
-                finalPrice: current.currentBid,
-              },
-            }),
-          ]);
-        } else {
-          await prisma.$transaction([
-            prisma.auctionLot.update({
-              where: { id: current.id },
-              data: {
-                status: AuctionStatus.UNSOLD,
-                timeLeft: 0,
-              },
-            }),
-            prisma.player.update({
-              where: { id: current.playerId },
-              data: {
-                status: PlayerStatus.UNSOLD,
-                soldToTeamId: null,
-                finalPrice: null,
-              },
-            }),
-          ]);
-        }
-      }
-
-      const next = await prisma.auctionLot.findFirst({
-        where: {
-          eventId: event.id,
-          lotOrder: { gt: current.lotOrder },
-          status: { in: [AuctionStatus.PENDING, AuctionStatus.ACTIVE] },
-        },
-        orderBy: { lotOrder: 'asc' },
-      });
-
-      if (!next) {
-        runtime.isRunning = false;
-        runtime.autoProgress = false;
-        runtime.activeLotId = null;
-        runtime.activeLotEndsAt = null;
-        runtime.timeLeft = 0;
-        await this.saveRuntimeState(event.id, runtime);
-        await prisma.event.update({ where: { id: event.id }, data: { status: 'COMPLETED' } });
-        return { done: true, runtime };
-      }
-
-      await prisma.auctionLot.update({
-        where: { id: next.id },
-        data: {
-          status: AuctionStatus.ACTIVE,
-          timeLeft: event.auctionWindowSeconds,
-        },
-      });
-
-      runtime.activeLotId = next.id;
-      runtime.activeLotEndsAt = Date.now() + (event.auctionWindowSeconds * 1000);
-      runtime.timeLeft = event.auctionWindowSeconds;
-      runtime.isRunning = true;
-      await this.saveRuntimeState(event.id, runtime);
-
-      return {
-        done: false,
-        runtime,
-        nextLotId: next.id,
-      };
+      return this._progressToNextLot(event, runtime);
     });
   },
 
@@ -577,28 +613,47 @@ export const auctionService = {
         });
       }
 
-      const updated = await prisma.auctionLot.update({
-        where: { id: lot.id },
-        data: {
-          status: parseAuctionStatus(status),
-          timeLeft: status === 'ACTIVE' ? event.auctionWindowSeconds : 0,
-        },
-        include: {
-          player: true,
-          currentOwner: true,
-        },
-      });
+      let lotResponse: any;
 
-      runtime.activeLotId = status === 'ACTIVE' ? lot.id : runtime.activeLotId;
-      runtime.activeLotEndsAt = status === 'ACTIVE'
-        ? Date.now() + (event.auctionWindowSeconds * 1000)
-        : (runtime.activeLotId === lot.id ? null : runtime.activeLotEndsAt);
-      runtime.timeLeft = computeTimeLeft(runtime.activeLotEndsAt);
+      if (status === 'ACTIVE') {
+        const updated = await prisma.auctionLot.update({
+          where: { id: lot.id },
+          data: {
+            status: AuctionStatus.ACTIVE,
+            timeLeft: event.auctionWindowSeconds,
+          },
+          include: {
+            player: true,
+            currentOwner: true,
+          },
+        });
+
+        delete runtime.liveBids[lot.id];
+        runtime.activeLotId = lot.id;
+        runtime.isRunning = true;
+        runtime.activeLotEndsAt = Date.now() + (event.auctionWindowSeconds * 1000);
+        runtime.timeLeft = computeTimeLeft(runtime.activeLotEndsAt);
+        lotResponse = toBoardLot(updated);
+      } else {
+        const settled = await this.settleLot(event, lot.id, runtime, {
+          forcedStatus: status,
+        });
+
+        if (runtime.activeLotId === lot.id) {
+          runtime.activeLotId = null;
+          runtime.activeLotEndsAt = null;
+          runtime.timeLeft = 0;
+          runtime.isRunning = false;
+        }
+
+        lotResponse = settled.lot;
+      }
+
       await this.saveRuntimeState(event.id, runtime);
 
       return {
         runtime,
-        lot: toBoardLot(updated),
+        lot: lotResponse,
       };
     });
   },
@@ -634,53 +689,7 @@ export const auctionService = {
           });
 
           if (current && current.status === AuctionStatus.ACTIVE) {
-            if (current.currentOwnerId) {
-              const team = await prisma.team.findFirst({
-                where: { eventId: event.id, ownerId: current.currentOwnerId },
-              });
-
-              if (!team) {
-                throw new AppError('Winning owner team not found', 400);
-              }
-
-              if (team.coinsLeft < current.currentBid) {
-                throw new AppError('Winning team has insufficient coins', 400);
-              }
-
-              await prisma.$transaction([
-                prisma.auctionLot.update({
-                  where: { id: current.id },
-                  data: { status: AuctionStatus.SOLD, timeLeft: 0 },
-                }),
-                prisma.team.update({
-                  where: { id: team.id },
-                  data: { coinsLeft: { decrement: current.currentBid } },
-                }),
-                prisma.player.update({
-                  where: { id: current.playerId },
-                  data: {
-                    status: PlayerStatus.SOLD,
-                    soldToTeamId: team.id,
-                    finalPrice: current.currentBid,
-                  },
-                }),
-              ]);
-            } else {
-              await prisma.$transaction([
-                prisma.auctionLot.update({
-                  where: { id: current.id },
-                  data: { status: AuctionStatus.UNSOLD, timeLeft: 0 },
-                }),
-                prisma.player.update({
-                  where: { id: current.playerId },
-                  data: {
-                    status: PlayerStatus.UNSOLD,
-                    soldToTeamId: null,
-                    finalPrice: null,
-                  },
-                }),
-              ]);
-            }
+            await this.settleLot(event, current.id, runtime);
           }
 
           runtime.isRunning = false;
@@ -697,7 +706,7 @@ export const auctionService = {
           };
         }
 
-        const progression = await this.nextLot(event.id);
+        const progression = await this._progressToNextLot(event, runtime);
         const refreshedRuntime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
         const nextActiveLotId = progression.done ? null : (progression.nextLotId || null);
         return {
