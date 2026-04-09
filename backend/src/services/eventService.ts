@@ -68,6 +68,55 @@ export const eventService = {
     return event;
   },
 
+  // Get full event data for admin workspace
+  async getEventFullForAdmin(eventId: string) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        _count: {
+          select: {
+            teams: true,
+            players: true,
+            owners: true,
+            auctionLots: true,
+          },
+        },
+        owners: {
+          orderBy: { createdAt: 'asc' },
+        },
+        teams: {
+          include: {
+            owner: true,
+            players: {
+              where: { status: PlayerStatus.SOLD },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        players: {
+          include: {
+            soldToTeam: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        auctionLots: {
+          include: {
+            player: true,
+            currentOwner: true,
+          },
+          orderBy: { lotOrder: 'asc' },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new AppError('Event not found', 404);
+    }
+
+    return event;
+  },
+
   // Get event by slug
   async getEventBySlug(slug: string) {
     const event = await prisma.event.findUnique({
@@ -208,6 +257,35 @@ export const eventService = {
     });
   },
 
+  async getTeamById(eventId: string, teamId: string) {
+    const team = await prisma.team.findFirst({
+      where: { id: teamId, eventId },
+    });
+
+    if (!team) {
+      throw new AppError('Team not found', 404);
+    }
+
+    return team;
+  },
+
+  async updateTeam(eventId: string, teamId: string, data: any) {
+    await this.getTeamById(eventId, teamId);
+
+    return await prisma.team.update({
+      where: { id: teamId },
+      data,
+    });
+  },
+
+  async deleteTeam(eventId: string, teamId: string) {
+    await this.getTeamById(eventId, teamId);
+
+    return await prisma.team.delete({
+      where: { id: teamId },
+    });
+  },
+
   // Get owners
   async getOwners(eventIdOrSlug: string) {
     const event = await this.getEvent(eventIdOrSlug);
@@ -219,6 +297,35 @@ export const eventService = {
         },
       },
       orderBy: { createdAt: 'asc' },
+    });
+  },
+
+  async getOwnerById(eventId: string, ownerId: string) {
+    const owner = await prisma.owner.findFirst({
+      where: { id: ownerId, eventId },
+    });
+
+    if (!owner) {
+      throw new AppError('Owner not found', 404);
+    }
+
+    return owner;
+  },
+
+  async updateOwner(eventId: string, ownerId: string, data: any) {
+    await this.getOwnerById(eventId, ownerId);
+
+    return await prisma.owner.update({
+      where: { id: ownerId },
+      data,
+    });
+  },
+
+  async deleteOwner(eventId: string, ownerId: string) {
+    await this.getOwnerById(eventId, ownerId);
+
+    return await prisma.owner.delete({
+      where: { id: ownerId },
     });
   },
 
@@ -254,6 +361,35 @@ export const eventService = {
     });
   },
 
+  async getPlayerById(eventId: string, playerId: string) {
+    const player = await prisma.player.findFirst({
+      where: { id: playerId, eventId },
+    });
+
+    if (!player) {
+      throw new AppError('Player not found', 404);
+    }
+
+    return player;
+  },
+
+  async updatePlayer(eventId: string, playerId: string, data: any) {
+    await this.getPlayerById(eventId, playerId);
+
+    return await prisma.player.update({
+      where: { id: playerId },
+      data,
+    });
+  },
+
+  async deletePlayer(eventId: string, playerId: string) {
+    await this.getPlayerById(eventId, playerId);
+
+    return await prisma.player.delete({
+      where: { id: playerId },
+    });
+  },
+
   // Get auction board
   async getAuctionBoard(eventIdOrSlug: string) {
     const event = await this.getEvent(eventIdOrSlug);
@@ -284,5 +420,85 @@ export const eventService = {
         lotOrder: lot.lotOrder,
       })),
     };
+  },
+
+  async createAuctionLot(eventId: string, data: any) {
+    await this.getEventById(eventId);
+    await this.getPlayerById(eventId, data.playerId);
+
+    if (data.currentOwnerId) {
+      await this.getOwnerById(eventId, data.currentOwnerId);
+    }
+
+    const existingOrder = await prisma.auctionLot.findFirst({
+      where: { eventId, lotOrder: data.lotOrder },
+    });
+
+    if (existingOrder) {
+      throw new AppError('Lot order already exists for this event', 400);
+    }
+
+    return await prisma.auctionLot.create({
+      data: {
+        eventId,
+        playerId: data.playerId,
+        currentBid: data.currentBid,
+        currentOwnerId: data.currentOwnerId,
+        status: data.status,
+        timeLeft: data.timeLeft,
+        lotOrder: data.lotOrder,
+      },
+    });
+  },
+
+  async getAuctionLotById(eventId: string, lotId: string) {
+    const lot = await prisma.auctionLot.findFirst({
+      where: { id: lotId, eventId },
+    });
+
+    if (!lot) {
+      throw new AppError('Auction lot not found', 404);
+    }
+
+    return lot;
+  },
+
+  async updateAuctionLot(eventId: string, lotId: string, data: any) {
+    await this.getAuctionLotById(eventId, lotId);
+
+    if (data.playerId) {
+      await this.getPlayerById(eventId, data.playerId);
+    }
+
+    if (data.currentOwnerId) {
+      await this.getOwnerById(eventId, data.currentOwnerId);
+    }
+
+    if (data.lotOrder) {
+      const existingOrder = await prisma.auctionLot.findFirst({
+        where: {
+          eventId,
+          lotOrder: data.lotOrder,
+          id: { not: lotId },
+        },
+      });
+
+      if (existingOrder) {
+        throw new AppError('Lot order already exists for this event', 400);
+      }
+    }
+
+    return await prisma.auctionLot.update({
+      where: { id: lotId },
+      data,
+    });
+  },
+
+  async deleteAuctionLot(eventId: string, lotId: string) {
+    await this.getAuctionLotById(eventId, lotId);
+
+    return await prisma.auctionLot.delete({
+      where: { id: lotId },
+    });
   },
 };

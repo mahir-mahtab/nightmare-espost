@@ -395,6 +395,14 @@ socket.on('auction_error', {
 - [x] Database setup complete: Docker containers running, migrations applied
 - [x] All 5 test scripts passing
 
+#### **Sub-Phase 4A: Admin Workspace Upgrade (Per-Event Control Panel)** ✅
+- [x] Decouple admin UI from main site navbar (admin page is standalone)
+- [x] Add per-event admin workspace tabs (Overview, Edit Event, Owners, Teams, Players, Auction Lots)
+- [x] Add full event workspace API: `GET /api/admin/events/:eventId/full`
+- [x] Implement inline admin CRUD for owners, teams, players, and auction lots
+- [x] Extend backend validators and service-level relation checks to match Prisma schema
+- [x] Keep bulk upload flow and align examples/requirements with schema constraints
+
 ### **Phase 5: Event Authentication** (Day 3) ✅
 - [x] Implement per-event password validation
 - [x] Build session token generation (JWT with eventId + role + ownerId)

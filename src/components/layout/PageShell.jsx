@@ -1,10 +1,10 @@
 import { motion as Motion } from 'framer-motion';
 import { Navbar, Footer } from './index.jsx';
 
-const PageShell = ({ children, subtitle, accent, subHeader }) => (
+const PageShell = ({ children, subtitle, accent, subHeader, showNavbar = true }) => (
   <div className="min-h-screen bg-black text-white">
-    <Navbar />
-    <main className="pt-20 md:pt-22">
+    {showNavbar && <Navbar />}
+    <main className={showNavbar ? 'pt-20 md:pt-22' : ''}>
       {subHeader}
       <section className="relative overflow-hidden px-4 pb-8 pt-4 sm:px-5 md:pt-10 lg:px-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,0,0,0.1),transparent_50%)]" />

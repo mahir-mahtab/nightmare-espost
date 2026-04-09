@@ -41,7 +41,7 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <PageShell accent="Admin Access">
+    <PageShell accent="Admin Access" showNavbar={false}>
       <section className="flex min-h-[calc(100vh-200px)] items-center justify-center px-4 py-12">
         <Motion.div
           initial={{ opacity: 0, y: 20 }}

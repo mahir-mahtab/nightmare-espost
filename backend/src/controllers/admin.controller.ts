@@ -10,6 +10,14 @@ import {
   bulkTeamsSchema,
   bulkOwnersSchema,
   bulkPlayersSchema,
+  createOwnerSchema,
+  updateOwnerSchema,
+  createTeamSchema,
+  updateTeamSchema,
+  createPlayerSchema,
+  updatePlayerSchema,
+  createAuctionLotSchema,
+  updateAuctionLotSchema,
 } from '../utils/validators.js';
 
 export const adminController = {
@@ -78,6 +86,21 @@ export const adminController = {
     }
   },
 
+  // Get full event workspace data
+  async getEventFull(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const event = await eventService.getEventFullForAdmin(eventId);
+
+      res.json({
+        success: true,
+        data: event,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // Update event
   async updateEvent(req: Request, res: Response, next: NextFunction) {
     try {
@@ -130,6 +153,195 @@ export const adminController = {
       res.status(201).json({
         success: true,
         data: createdTeams,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Create owner
+  async createOwner(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const ownerData = createOwnerSchema.parse(req.body);
+      const [owner] = await eventService.createOwners(eventId, [ownerData]);
+
+      res.status(201).json({
+        success: true,
+        data: owner,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Update owner
+  async updateOwner(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, ownerId } = req.params;
+      const ownerData = updateOwnerSchema.parse(req.body);
+      const owner = await eventService.updateOwner(eventId, ownerId, ownerData);
+
+      res.json({
+        success: true,
+        data: owner,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Delete owner
+  async deleteOwner(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, ownerId } = req.params;
+      await eventService.deleteOwner(eventId, ownerId);
+
+      res.json({
+        success: true,
+        message: 'Owner deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Create team
+  async createTeam(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const teamData = createTeamSchema.parse(req.body);
+      const [team] = await eventService.createTeams(eventId, [teamData]);
+
+      res.status(201).json({
+        success: true,
+        data: team,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Update team
+  async updateTeam(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, teamId } = req.params;
+      const teamData = updateTeamSchema.parse(req.body);
+      const team = await eventService.updateTeam(eventId, teamId, teamData);
+
+      res.json({
+        success: true,
+        data: team,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Delete team
+  async deleteTeam(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, teamId } = req.params;
+      await eventService.deleteTeam(eventId, teamId);
+
+      res.json({
+        success: true,
+        message: 'Team deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Create player
+  async createPlayer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const playerData = createPlayerSchema.parse(req.body);
+      const result = await eventService.createPlayers(eventId, [playerData]);
+      const createdPlayer = result.players?.[0];
+
+      res.status(201).json({
+        success: true,
+        data: createdPlayer,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Update player
+  async updatePlayer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, playerId } = req.params;
+      const playerData = updatePlayerSchema.parse(req.body);
+      const player = await eventService.updatePlayer(eventId, playerId, playerData);
+
+      res.json({
+        success: true,
+        data: player,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Delete player
+  async deletePlayer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, playerId } = req.params;
+      await eventService.deletePlayer(eventId, playerId);
+
+      res.json({
+        success: true,
+        message: 'Player deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Create auction lot
+  async createAuctionLot(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const lotData = createAuctionLotSchema.parse(req.body);
+      const lot = await eventService.createAuctionLot(eventId, lotData);
+
+      res.status(201).json({
+        success: true,
+        data: lot,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Update auction lot
+  async updateAuctionLot(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, lotId } = req.params;
+      const lotData = updateAuctionLotSchema.parse(req.body);
+      const lot = await eventService.updateAuctionLot(eventId, lotId, lotData);
+
+      res.json({
+        success: true,
+        data: lot,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Delete auction lot
+  async deleteAuctionLot(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId, lotId } = req.params;
+      await eventService.deleteAuctionLot(eventId, lotId);
+
+      res.json({
+        success: true,
+        message: 'Auction lot deleted successfully',
       });
     } catch (error) {
       next(error);

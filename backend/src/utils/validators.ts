@@ -24,11 +24,15 @@ export const createTeamSchema = z.object({
   coinsLeft: z.number().int().min(0).default(0),
 });
 
+export const updateTeamSchema = createTeamSchema.partial();
+
 // Owner validation schemas
 export const createOwnerSchema = z.object({
   name: z.string().min(2).max(255),
   avatarUrl: z.string().url().optional(),
 });
+
+export const updateOwnerSchema = createOwnerSchema.partial();
 
 // Player validation schemas
 export const createPlayerSchema = z.object({
@@ -38,6 +42,23 @@ export const createPlayerSchema = z.object({
   basePrice: z.number().int().min(0).default(0),
   imageUrl: z.string().url().optional(),
 });
+
+export const updatePlayerSchema = createPlayerSchema.partial().extend({
+  status: z.enum(['ACTIVE', 'SOLD', 'UNSOLD']).optional(),
+  soldToTeamId: z.string().uuid().nullable().optional(),
+  finalPrice: z.number().int().min(0).nullable().optional(),
+});
+
+export const createAuctionLotSchema = z.object({
+  playerId: z.string().uuid(),
+  currentBid: z.number().int().min(0).default(0),
+  currentOwnerId: z.string().uuid().optional(),
+  status: z.enum(['PENDING', 'ACTIVE', 'SOLD', 'UNSOLD']).default('PENDING'),
+  timeLeft: z.number().int().min(0).default(30),
+  lotOrder: z.number().int().min(1),
+});
+
+export const updateAuctionLotSchema = createAuctionLotSchema.partial();
 
 // Bulk upload schemas
 export const bulkTeamsSchema = z.array(createTeamSchema);
