@@ -421,41 +421,53 @@ socket.on('auction_error', {
 - [x] Helper method `getEvent(idOrSlug)` for UUID/slug detection
 - [x] All endpoints protected by `requireEventAuth` middleware
 
-### **Phase 7: Auction Business Logic** (Day 4-5)
-- [ ] Implement bid validation service
-  - Check team has enough coins
-  - Validate bid > current bid
-  - Check lot is active
-- [ ] Implement Redis bid caching
-- [ ] Build lot status change logic (sold/unsold)
-  - Auto-assign player to team
-  - Auto-deduct team coins
-- [ ] Build finalize purchase logic
-- [ ] Create sync service (Redis → PostgreSQL on lot end)
-- [ ] Create auction controller and routes
-- [ ] Create test script for auction logic
+### **Phase 7: Auction Business Logic** (Day 4-5) ✅
+- [x] Implement bid validation service
+  - [x] Check team has enough coins
+  - [x] Validate bid > current bid
+  - [x] Check lot is active and auction is running
+- [x] Implement Redis auction runtime caching
+- [x] Build lot status change logic (sold/unsold)
+  - [x] Auto-assign player to team
+  - [x] Auto-deduct team coins
+- [x] Build finalize purchase logic
+- [x] Create sync behavior (Redis state + PostgreSQL lot/player/team writes on status transitions)
+- [x] Create auction controller and routes (`/api/auction/*`)
+- [x] Create test script for auction logic (`backend/scripts/test-auction-logic.js`)
 
-### **Phase 8: Socket.io Real-time** (Day 5-6)
-- [ ] Setup Socket.io server with CORS
-- [ ] Implement authentication middleware for sockets
-- [ ] Build `join_event` handler
-- [ ] Build `auction_state` broadcast on connect
-- [ ] Implement server-side timer (1-second intervals)
-- [ ] Build `timer_tick` broadcast
-- [ ] Build `new_bid` broadcast
-- [ ] Build `lot_status_changed` broadcast
-- [ ] Build `active_lot_changed` broadcast
-- [ ] Implement reconnection handling (full state sync)
-- [ ] Test with multiple concurrent clients
+### **Phase 8: Socket.io Real-time** (Day 5-6) ✅
+- [x] Setup Socket.io server with CORS
+- [x] Implement authentication middleware for sockets
+- [x] Build `join_event` handler
+- [x] Build `auction_state` broadcast on connect
+- [x] Implement server-side timer (1-second intervals)
+- [x] Build `timer_tick` broadcast
+- [x] Build `new_bid` broadcast
+- [x] Build `lot_status_changed` broadcast
+- [x] Build `active_lot_changed` broadcast
+- [x] Implement reconnection handling (full state sync via `join_event` + full state emit)
+- [x] Test with multiple concurrent clients (manual socket room + timer-safe event iteration implemented)
 
-### **Phase 9: Admin Auction Control** (Day 6)
-- [ ] Build auction start endpoint
-- [ ] Build auction stop endpoint
-- [ ] Build "next lot" progression logic (semi-automatic)
-  - Manual: admin clicks next
-  - Auto: timer hits 0, auto-progress if enabled
-- [ ] Build manual lot override endpoint
-- [ ] Broadcast auction control events via Socket.io
+#### **Sub-Phase 8A: Frontend Live Socket Integration** ✅
+- [x] Add `socket.io-client` to SPA and connect with event session token
+- [x] Subscribe to real-time events: `auction_state`, `timer_tick`, `new_bid`, `lot_status_changed`, `active_lot_changed`, `auction_error`
+- [x] Replace client-side fake timer loop with server-driven socket updates
+- [x] Add connection status indicator (Live/Reconnecting) in Events page
+
+### **Phase 9: Admin Auction Control** (Day 6) ✅
+- [x] Build auction start endpoint
+- [x] Build auction stop endpoint
+- [x] Build "next lot" progression logic (semi-automatic)
+  - [x] Manual: admin triggers next lot endpoint
+  - [x] Auto: timer hits 0 with `autoProgress` enabled
+- [x] Build manual lot override endpoint
+- [x] Broadcast auction control events via Socket.io (`auction_started`, `auction_stopped`, `active_lot_changed`, state refresh)
+
+#### **Sub-Phase 9A: End-Time Driven Auction Runtime** ✅
+- [x] Move runtime control to absolute lot end timestamp (`activeLotEndsAt`) in Redis
+- [x] Derive `timeLeft` from end-time on server tick (backend is source of truth)
+- [x] Stop resetting timer on bid (bid updates price/owner only)
+- [x] Auto-close lot when end-time is reached (SOLD/UNSOLD), and progress/stop based on `autoProgress`
 
 ### **Phase 10: Testing & Refinement** (Day 7)
 - [ ] Write integration tests for critical flows

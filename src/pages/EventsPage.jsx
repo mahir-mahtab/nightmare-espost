@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
+import { io } from 'socket.io-client';
 import {
   AlertTriangle,
   Calendar,
@@ -20,6 +21,7 @@ import { CyberCard } from '../components/ui/index.jsx';
 import { EVENT_ROUTE_TABS } from '../data/eventsMockData.js';
 import { eventsService } from '../data/eventsService.js';
 import useEventAuth from '../hooks/useEventAuth.js';
+import { config } from '../config.js';
 
 const FILTER_STATES = [
   { value: 'all', label: 'All' },
@@ -213,11 +215,15 @@ const AuctionHub = ({
   selectedOwnerId,
   setSelectedOwnerId,
   canBid,
+  canAdminControl,
   increments,
   activeTab,
   onPlaceBid,
   onStatusChange,
   onFinalizePurchase,
+  onStartAuction,
+  onStopAuction,
+  onNextLot,
 }) => {
   const activePlayerName = selectedPlayer?.name || 'No player selected';
 
@@ -301,7 +307,7 @@ const AuctionHub = ({
                   <button
                     type="button"
                     onClick={() => onStatusChange('sold')}
-                    disabled={!canBid}
+                    disabled={!canAdminControl}
                     className="border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-green-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Acquired
@@ -309,7 +315,7 @@ const AuctionHub = ({
                   <button
                     type="button"
                     onClick={() => onStatusChange('unsold')}
-                    disabled={!canBid}
+                    disabled={!canAdminControl}
                     className="border border-yellow-500/50 bg-yellow-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-yellow-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Unsold
@@ -318,15 +324,40 @@ const AuctionHub = ({
                     <button
                       type="button"
                       onClick={onFinalizePurchase}
-                      disabled={!canBid}
+                      disabled={!canAdminControl}
                       className="border border-primary/60 bg-primary/20 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-primary uppercase disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Confirm
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={onStartAuction}
+                    disabled={!canAdminControl}
+                    className="border border-primary/50 bg-primary/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-primary uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Start
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onStopAuction}
+                    disabled={!canAdminControl}
+                    className="border border-white/30 bg-black/40 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Stop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onNextLot}
+                    disabled={!canAdminControl}
+                    className="border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-amber-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next Lot
+                  </button>
                 </div>
               </div>
               {!canBid && <p className="text-[11px] text-amber-300">View-only mode active for this session.</p>}
+              {!canAdminControl && <p className="text-[11px] text-white/60">Admin controls disabled (login via /admin/login in this browser).</p>}
             </div>
           </div>
         </div>
@@ -418,6 +449,8 @@ const EventsPage = () => {
   const activeTab = tab || 'event';
   const { session, logout } = useEventAuth(eventId);
   const canBid = session?.role === 'owner' && Boolean(session?.ownerId);
+  const adminToken = localStorage.getItem('admin-token');
+  const canAdminControl = Boolean(adminToken);
 
   const tabIds = useMemo(() => EVENT_ROUTE_TABS.map((item) => item.id), []);
 
@@ -441,6 +474,7 @@ const EventsPage = () => {
   const [selectedAuctionId, setSelectedAuctionId] = useState('');
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [bidAmount, setBidAmount] = useState('');
+  const [socketConnected, setSocketConnected] = useState(false);
 
   useEffect(() => {
     if (!tabIds.includes(activeTab) && eventId) {
@@ -466,11 +500,11 @@ const EventsPage = () => {
         auctionPayload,
         incrementsPayload,
       ] = await Promise.all([
-        eventsService.getEventSummary(),
-        eventsService.getTeams(),
-        eventsService.listPlayers(),
-        eventsService.getOwners(),
-        eventsService.getAuctionBoard(),
+        eventsService.getEventSummary(eventId, session?.sessionToken),
+        eventsService.getTeams(eventId, session?.sessionToken),
+        eventsService.listPlayers(eventId, session?.sessionToken),
+        eventsService.getOwners(eventId, session?.sessionToken),
+        eventsService.getAuctionBoard(eventId, session?.sessionToken),
         eventsService.getBidIncrements(),
       ]);
 
@@ -483,19 +517,19 @@ const EventsPage = () => {
       setIncrements(incrementsPayload);
       setSelectedAuctionId(auctionPayload.activeAuctionId);
       setSelectedOwnerId(canBid && session?.ownerId ? session.ownerId : ownerPayload[0]?.id || '');
-      setBidAmount(String(auctionPayload.lots[0]?.currentBid || 0));
+      setBidAmount(String((auctionPayload.lots || []).find((lot) => lot.id === auctionPayload.activeAuctionId)?.currentBid || auctionPayload.lots?.[0]?.currentBid || 0));
     } catch (loadError) {
       setError(loadError.message || 'Failed to load event data');
     } finally {
       setLoading(false);
     }
-  }, [canBid, session]);
+  }, [canBid, session, eventId]);
 
   const refreshBoard = async () => {
     const [auctionPayload, allPlayersPayload, filteredPlayers] = await Promise.all([
-      eventsService.getAuctionBoard(),
-      eventsService.listPlayers(),
-      eventsService.listPlayers({
+      eventsService.getAuctionBoard(eventId, session?.sessionToken),
+      eventsService.listPlayers(eventId, session?.sessionToken),
+      eventsService.listPlayers(eventId, session?.sessionToken, {
         search,
         role: roleFilter,
         teamId: teamFilter,
@@ -519,7 +553,7 @@ const EventsPage = () => {
       }
 
       try {
-        const filteredPlayers = await eventsService.listPlayers({
+        const filteredPlayers = await eventsService.listPlayers(eventId, session?.sessionToken, {
           search,
           role: roleFilter,
           teamId: teamFilter,
@@ -532,36 +566,145 @@ const EventsPage = () => {
     }, 180);
 
     return () => clearTimeout(timeout);
-  }, [summary, search, roleFilter, teamFilter, statusFilter]);
+  }, [summary, search, roleFilter, teamFilter, statusFilter, eventId, session]);
 
   useEffect(() => {
-    if (!auction || !selectedAuctionId) {
+    if (!eventId || !session?.sessionToken || !session?.eventId) {
       return undefined;
     }
 
-    const interval = setInterval(() => {
+    const socketBaseUrl = config.apiUrl.replace(/\/api$/, '');
+    const socket = io(socketBaseUrl, {
+      transports: ['websocket'],
+      auth: {
+        token: session.sessionToken,
+      },
+    });
+
+    const syncAuctionState = (state) => {
+      if (!state || state.eventId !== session.eventId) {
+        return;
+      }
+
+      setAuction({
+        activeAuctionId: state.activeLotId,
+        lotDuration: state.lotDuration,
+        activeLotEndsAt: state.activeLotEndsAt || null,
+        timeLeft: Number(state.timeLeft || 0),
+        lots: state.lots || [],
+      });
+
+      if (state.activeLotId) {
+        setSelectedAuctionId((prevId) => (prevId ? prevId : state.activeLotId));
+      }
+    };
+
+    socket.on('connect', () => {
+      setSocketConnected(true);
+      socket.emit('join_event', { eventId: session.eventId });
+    });
+
+    socket.on('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    socket.on('auction_state', (state) => {
+      syncAuctionState(state);
+    });
+
+    socket.on('timer_tick', ({ eventId: incomingEventId, timeLeft, activeLotId, activeLotEndsAt }) => {
+      if (incomingEventId !== session.eventId) {
+        return;
+      }
+
       setAuction((prev) => {
         if (!prev) {
           return prev;
         }
 
-        const nextLots = prev.lots.map((lot) => {
-          if (lot.id !== selectedAuctionId || lot.status !== 'active' || lot.timeLeft <= 0) {
+        const nextLots = (prev.lots || []).map((lot) => {
+          if (lot.id !== activeLotId) {
             return lot;
           }
 
           return {
             ...lot,
-            timeLeft: Math.max(0, lot.timeLeft - 1),
+            timeLeft: Number(timeLeft || 0),
           };
         });
 
-        return { ...prev, lots: nextLots };
+        return {
+          ...prev,
+          activeAuctionId: activeLotId || prev.activeAuctionId,
+          activeLotEndsAt: activeLotEndsAt || prev.activeLotEndsAt || null,
+          timeLeft: Number(timeLeft || 0),
+          lots: nextLots,
+        };
       });
-    }, 1000);
+    });
 
-    return () => clearInterval(interval);
-  }, [auction, selectedAuctionId]);
+    socket.on('new_bid', ({ eventId: incomingEventId, lotId, ownerId, amount, timeLeft }) => {
+      if (incomingEventId !== session.eventId) {
+        return;
+      }
+
+      setAuction((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          lots: (prev.lots || []).map((lot) => (
+            lot.id === lotId
+              ? {
+                ...lot,
+                currentOwnerId: ownerId,
+                currentBid: amount,
+                timeLeft: Number(timeLeft || lot.timeLeft || 0),
+              }
+              : lot
+          )),
+        };
+      });
+    });
+
+    socket.on('lot_status_changed', ({ eventId: incomingEventId, lot }) => {
+      if (incomingEventId !== session.eventId || !lot) {
+        return;
+      }
+
+      setAuction((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          lots: (prev.lots || []).map((item) => (item.id === lot.id ? { ...item, ...lot } : item)),
+        };
+      });
+    });
+
+    socket.on('active_lot_changed', ({ eventId: incomingEventId, newLotId }) => {
+      if (incomingEventId !== session.eventId) {
+        return;
+      }
+
+      if (newLotId) {
+        setSelectedAuctionId(newLotId);
+      }
+      refreshBoard().catch(() => {});
+    });
+
+    socket.on('auction_error', (payload) => {
+      setError(payload?.message || 'Auction socket error');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [eventId, session, refreshBoard]);
 
   useEffect(() => {
     if (!error) {
@@ -589,6 +732,17 @@ const EventsPage = () => {
 
   const selectedPlayer = selectedAuction ? playerById[selectedAuction.playerId] : null;
   const selectedOwner = selectedAuction ? ownerById[selectedAuction.currentOwnerId] : null;
+
+  useEffect(() => {
+    if (!auction?.lots?.length) {
+      return;
+    }
+
+    const availableIds = new Set(auction.lots.map((lot) => lot.id));
+    if (!selectedAuctionId || !availableIds.has(selectedAuctionId)) {
+      setSelectedAuctionId(auction.activeAuctionId || auction.lots[0].id);
+    }
+  }, [auction, selectedAuctionId]);
 
   const roleOptions = useMemo(
     () => ['all', ...new Set(allPlayers.map((player) => player.role))],
@@ -622,6 +776,8 @@ const EventsPage = () => {
       }
 
       await eventsService.placeBid({
+        eventId,
+        sessionToken: session.sessionToken,
         auctionId: selectedAuctionId,
         ownerId: session.ownerId,
         amount: Number(bidAmount),
@@ -634,13 +790,15 @@ const EventsPage = () => {
   };
 
   const handleStatusChange = async (status) => {
-    if (!canBid) {
-      setError('Administrative access required');
+    if (!canAdminControl) {
+      setError('Admin control token required');
       return;
     }
 
     try {
       await eventsService.markAuctionStatus({
+        eventId,
+        adminToken,
         auctionId: selectedAuctionId,
         status,
       });
@@ -652,13 +810,15 @@ const EventsPage = () => {
   };
 
   const handleFinalizePurchase = async () => {
-    if (!canBid || !session?.ownerId) {
-      setError('Administrative access required');
+    if (!canAdminControl || !session?.ownerId) {
+      setError('Admin control token required');
       return;
     }
 
     try {
       await eventsService.finalizePurchase({
+        eventId,
+        adminToken,
         auctionId: selectedAuctionId,
         ownerId: session.ownerId,
         amount: Number(bidAmount),
@@ -673,6 +833,61 @@ const EventsPage = () => {
   const handleLogout = () => {
     logout();
     navigate('/events');
+  };
+
+  const handleStartAuction = async () => {
+    if (!canAdminControl) {
+      setError('Admin control token required');
+      return;
+    }
+
+    try {
+      await eventsService.startAuction({
+        eventId,
+        adminToken,
+        autoProgress: true,
+      });
+      await refreshBoard();
+      showActionState('Auction started');
+    } catch (startError) {
+      setError(startError.message || 'Unable to start auction');
+    }
+  };
+
+  const handleStopAuction = async () => {
+    if (!canAdminControl) {
+      setError('Admin control token required');
+      return;
+    }
+
+    try {
+      await eventsService.stopAuction({
+        eventId,
+        adminToken,
+      });
+      await refreshBoard();
+      showActionState('Auction stopped');
+    } catch (stopError) {
+      setError(stopError.message || 'Unable to stop auction');
+    }
+  };
+
+  const handleNextLot = async () => {
+    if (!canAdminControl) {
+      setError('Admin control token required');
+      return;
+    }
+
+    try {
+      await eventsService.nextLot({
+        eventId,
+        adminToken,
+      });
+      await refreshBoard();
+      showActionState('Moved to next lot');
+    } catch (nextError) {
+      setError(nextError.message || 'Unable to move next lot');
+    }
   };
 
   const renderTab = () => {
@@ -768,11 +983,15 @@ const EventsPage = () => {
         selectedOwnerId={selectedOwnerId}
         setSelectedOwnerId={setSelectedOwnerId}
         canBid={canBid}
+        canAdminControl={canAdminControl}
         increments={increments}
         activeTab={activeTab}
         onPlaceBid={handlePlaceBid}
         onStatusChange={handleStatusChange}
         onFinalizePurchase={handleFinalizePurchase}
+        onStartAuction={handleStartAuction}
+        onStopAuction={handleStopAuction}
+        onNextLot={handleNextLot}
       />
     );
   };
@@ -809,6 +1028,9 @@ const EventsPage = () => {
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-white/12 bg-black/35 p-3 md:p-4 rounded-lg">
             <div className="text-[11px] md:text-xs font-bold tracking-[0.16em] text-white/70 uppercase">
               Current Session: {session?.displayName || 'User'} • {session?.role === 'owner' ? 'Administrator' : 'Spectator'}
+            </div>
+            <div className={`text-[10px] font-bold tracking-[0.16em] uppercase ${socketConnected ? 'text-green-300' : 'text-yellow-300'}`}>
+              Socket: {socketConnected ? 'Live' : 'Reconnecting'}
             </div>
             <Motion.button
               whileHover={{ scale: 1.05 }}

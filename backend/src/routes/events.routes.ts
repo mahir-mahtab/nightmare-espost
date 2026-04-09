@@ -4,6 +4,9 @@ import { requireEventAuth } from '../middleware/eventAuth.js';
 
 const router: Router = Router();
 
+router.get('/', eventsController.listPublicEvents);
+router.get('/:eventId/login-context', eventsController.getLoginContext);
+
 // Auth routes (public)
 router.post('/:eventId/auth/login', eventsController.login);
 

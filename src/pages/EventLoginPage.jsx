@@ -13,6 +13,7 @@ const EventLoginPage = () => {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
   const [owners, setOwners] = useState([]);
+  const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState('viewer');
   const [ownerId, setOwnerId] = useState('');
@@ -28,12 +29,11 @@ const EventLoginPage = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const [summaryPayload, ownerPayload] = await Promise.all([
-          eventsService.getEventSummary(),
-          eventsService.getOwners(),
-        ]);
+        const payload = await eventsService.getLoginContext(eventId);
+        const eventPayload = payload?.event;
+        const ownerPayload = payload?.owners || [];
 
-        setSummary(summaryPayload);
+        setSummary(eventPayload || null);
         setOwners(ownerPayload);
         setOwnerId(ownerPayload[0]?.id || '');
       } catch (loadError) {
@@ -46,11 +46,11 @@ const EventLoginPage = () => {
     load();
   }, []);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     try {
-      login({ eventId, displayName, role, ownerId });
+      await login({ eventId, password, displayName, role, ownerId });
       navigate(`/events/${eventId}/auction`, { replace: true });
     } catch (submitError) {
       setError(submitError.message || 'Login failed');
@@ -76,6 +76,17 @@ const EventLoginPage = () => {
                 <p className="mt-2 text-xs font-bold tracking-[0.2em] text-primary uppercase">Event ID: {eventId}</p>
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Event Password</span>
+                    <input
+                      value={password}
+                      onChange={(inputEvent) => setPassword(inputEvent.target.value)}
+                      type="password"
+                      placeholder="Enter event password"
+                      className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
+                    />
+                  </label>
+
                   <label className="block">
                     <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Display Name</span>
                     <input

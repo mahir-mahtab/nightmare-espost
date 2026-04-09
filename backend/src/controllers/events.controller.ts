@@ -5,6 +5,52 @@ import { AppError } from '../middleware/errorHandler.js';
 import { eventLoginSchema } from '../utils/validators.js';
 
 export const eventsController = {
+  // List public events (no auth)
+  async listPublicEvents(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const events = await eventService.listPublicEvents();
+
+      res.json({
+        success: true,
+        data: events,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getLoginContext(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const event = await eventService.getEvent(eventId);
+      const owners = await eventService.getOwners(event.id);
+
+      res.json({
+        success: true,
+        data: {
+          event: {
+            id: event.id,
+            slug: event.slug,
+            title: event.title,
+            season: event.season,
+            game: event.game,
+            mode: event.mode,
+            streamStartTime: event.streamStartTime,
+            bannerUrl: event.bannerUrl,
+            status: event.status,
+          },
+          owners: owners.map((owner: any) => ({
+            id: owner.id,
+            name: owner.name,
+            avatarUrl: owner.avatarUrl,
+          })),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // Event login
   async login(req: Request, res: Response, next: NextFunction) {
     try {

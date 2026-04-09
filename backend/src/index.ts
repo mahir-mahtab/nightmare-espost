@@ -6,6 +6,8 @@ import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import adminRoutes from './routes/admin.routes.js';
 import eventsRoutes from './routes/events.routes.js';
+import auctionRoutes from './routes/auction.routes.js';
+import { socketServer } from './realtime/socketServer.js';
 
 const app: Express = express();
 const httpServer = createServer(app);
@@ -37,6 +39,7 @@ app.get('/health', (_req, res) => {
 // API Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/auction', auctionRoutes);
 
 // 404 handler
 app.use((_req, res) => {
@@ -51,6 +54,8 @@ app.use(errorHandler);
 
 // Start server
 const PORT = env.PORT;
+
+socketServer.init(httpServer, env.CORS_ORIGIN);
 
 httpServer.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT}`);

@@ -1,142 +1,232 @@
-import {
-  EVENT_SUMMARY,
-  TEAM_CARDS,
-  PLAYERS_POOL,
-  OWNERS,
-  AUCTION_BOARD,
-  BID_INCREMENTS,
-} from './eventsMockData.js';
+import { config } from '../config.js';
 
-const clone = (value) => JSON.parse(JSON.stringify(value));
+const toRoleLabel = (role) => {
+  if (!role) return '-';
+  return String(role);
+};
 
-const delay = async (ms = 120) => {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
+const toPlayerStatusLabel = (status) => {
+  if (!status) return 'active';
+  return String(status).toLowerCase();
+};
+
+const toAuctionStatusLabel = (status) => {
+  if (!status) return 'pending';
+  return String(status).toLowerCase();
+};
+
+const request = async (path, { method = 'GET', body, token } = {}) => {
+  const response = await fetch(`${config.apiUrl}${path}`, {
+    method,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
-};
 
-const state = {
-  players: clone(PLAYERS_POOL),
-  teams: clone(TEAM_CARDS),
-  owners: clone(OWNERS),
-  auction: clone(AUCTION_BOARD),
-};
-
-const resolveAuctionContext = (auctionId) => {
-  const auctionLot = state.auction.lots.find((lot) => lot.id === auctionId);
-  if (!auctionLot) {
-    throw new Error('Auction lot not found');
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.message || 'Request failed');
   }
 
-  const player = state.players.find((item) => item.id === auctionLot.playerId);
-  if (!player) {
-    throw new Error('Player not found for auction lot');
-  }
+  return payload.data;
+};
 
-  return { auctionLot, player };
+const mapSummary = (summary) => ({
+  id: summary.id,
+  title: summary.title,
+  season: summary.season,
+  game: summary.game,
+  mode: summary.mode,
+  registration: summary.registrationCount,
+  slots: summary.maxSlots,
+  streamStart: summary.streamStartTime,
+  auctionWindow: `${summary.auctionWindowSeconds}s per player`,
+  banner: summary.bannerUrl,
+  status: summary.status,
+});
+
+const mapOwner = (owner) => ({
+  id: owner.id,
+  name: owner.name,
+  avatar: owner.avatarUrl,
+  avatarUrl: owner.avatarUrl,
+  teamId: owner.teamId || '',
+});
+
+const mapTeam = (team) => ({
+  id: team.id,
+  name: team.name,
+  ownerName: team.owner?.name || '-',
+  ownerAvatar: team.owner?.avatarUrl || '',
+  roster: (team.players || []).map((player) => player.imageUrl).filter(Boolean),
+  coinsLeft: team.coinsLeft,
+  ownerId: team.ownerId,
+});
+
+const mapPlayer = (player) => ({
+  id: player.id,
+  name: player.name,
+  teamId: player.soldToTeamId || 'unassigned',
+  team: player.soldToTeam?.name || 'Unassigned',
+  role: toRoleLabel(player.role),
+  rankPoint: player.rankPoint,
+  nmCoin: player.finalPrice || player.basePrice,
+  status: toPlayerStatusLabel(player.status),
+  image: player.imageUrl,
+});
+
+const mapAuctionBoard = (board, players, owners) => {
+  const playerById = Object.fromEntries(players.map((player) => [player.id, player]));
+  const ownerById = Object.fromEntries(owners.map((owner) => [owner.id, owner]));
+
+  return {
+    activeAuctionId: board.activeAuctionId,
+    lotDuration: board.lotDuration,
+    lots: (board.lots || []).map((lot) => ({
+      id: lot.id,
+      playerId: lot.playerId,
+      currentBid: lot.currentBid,
+      currentOwnerId: lot.currentOwnerId,
+      status: toAuctionStatusLabel(lot.status),
+      timeLeft: lot.timeLeft,
+      lotOrder: lot.lotOrder,
+      playerName: lot.playerName || playerById[lot.playerId]?.name,
+      ownerName: lot.currentOwnerName || ownerById[lot.currentOwnerId]?.name,
+    })),
+  };
 };
 
 export const eventsService = {
-  async getEventSummary() {
-    await delay();
-    return clone(EVENT_SUMMARY);
+  async listPublicEvents() {
+    return await request('/events');
   },
 
-  async getTeams() {
-    await delay();
-    return clone(state.teams);
+  async getLoginContext(eventId) {
+    return await request(`/events/${eventId}/login-context`);
   },
 
-  async listPlayers(filters = {}) {
-    await delay();
-
-    const {
-      search = '',
-      role = 'all',
-      teamId = 'all',
-      status = 'all',
-    } = filters;
-
-    const normalized = search.trim().toLowerCase();
-
-    return clone(state.players.filter((player) => {
-      const isSearchMatch = !normalized || player.name.toLowerCase().includes(normalized) || player.team.toLowerCase().includes(normalized);
-      const isRoleMatch = role === 'all' || player.role === role;
-      const isTeamMatch = teamId === 'all' || player.teamId === teamId;
-      const isStatusMatch = status === 'all' || player.status === status;
-      return isSearchMatch && isRoleMatch && isTeamMatch && isStatusMatch;
-    }));
+  async getEventSummary(eventId, sessionToken) {
+    const data = await request(`/events/${eventId}/summary`, {
+      token: sessionToken,
+    });
+    return mapSummary(data);
   },
 
-  async getOwners() {
-    await delay();
-    return clone(state.owners);
+  async getTeams(eventId, sessionToken) {
+    const data = await request(`/events/${eventId}/teams`, {
+      token: sessionToken,
+    });
+    return data.map(mapTeam);
   },
 
-  async getAuctionBoard() {
-    await delay();
-    return clone(state.auction);
+  async listPlayers(eventId, sessionToken, filters = {}) {
+    const searchParams = new URLSearchParams();
+    if (filters.search) {
+      searchParams.set('search', filters.search);
+    }
+    if (filters.role && filters.role !== 'all') {
+      searchParams.set('role', filters.role);
+    }
+    if (filters.status && filters.status !== 'all') {
+      searchParams.set('status', String(filters.status).toUpperCase());
+    }
+
+    const query = searchParams.toString();
+    const path = `/events/${eventId}/players${query ? `?${query}` : ''}`;
+
+    const data = await request(path, {
+      token: sessionToken,
+    });
+
+    const mapped = data.map(mapPlayer);
+    if (filters.teamId && filters.teamId !== 'all') {
+      return mapped.filter((player) => player.teamId === filters.teamId);
+    }
+    return mapped;
+  },
+
+  async getOwners(eventId, sessionToken) {
+    const data = await request(`/events/${eventId}/owners`, {
+      token: sessionToken,
+    });
+    return data.map(mapOwner);
+  },
+
+  async getAuctionBoard(eventId, sessionToken) {
+    const [board, players, owners] = await Promise.all([
+      request(`/events/${eventId}/auction`, { token: sessionToken }),
+      request(`/events/${eventId}/players`, { token: sessionToken }),
+      request(`/events/${eventId}/owners`, { token: sessionToken }),
+    ]);
+
+    return mapAuctionBoard(board, players.map(mapPlayer), owners.map(mapOwner));
   },
 
   async getBidIncrements() {
-    await delay();
-    return clone(BID_INCREMENTS);
+    return [100, 500, 1000];
   },
 
-  async placeBid({ auctionId, ownerId, amount }) {
-    await delay();
-
-    if (!amount || amount <= 0) {
-      throw new Error('Bid amount must be greater than zero');
-    }
-
-    const { auctionLot } = resolveAuctionContext(auctionId);
-
-    if (auctionLot.status !== 'active') {
-      throw new Error('Bids are only allowed for active lots');
-    }
-
-    if (amount <= auctionLot.currentBid) {
-      throw new Error('Bid amount must be higher than current bid');
-    }
-
-    auctionLot.currentBid = amount;
-    auctionLot.currentOwnerId = ownerId;
-
-    return clone(auctionLot);
+  async placeBid({ eventId, sessionToken, auctionId, ownerId, amount }) {
+    return await request(`/auction/${eventId}/bid`, {
+      method: 'POST',
+      token: sessionToken,
+      body: {
+        lotId: auctionId,
+        ownerId,
+        amount,
+      },
+    });
   },
 
-  async markAuctionStatus({ auctionId, status }) {
-    await delay();
-
-    if (!['sold', 'unsold', 'active'].includes(status)) {
-      throw new Error('Invalid auction status');
-    }
-
-    const { auctionLot, player } = resolveAuctionContext(auctionId);
-    auctionLot.status = status;
-    auctionLot.timeLeft = status === 'active' ? state.auction.lotDuration : 0;
-    player.status = status;
-
-    return clone(auctionLot);
+  async markAuctionStatus({ eventId, adminToken, auctionId, status }) {
+    return await request(`/auction/${eventId}/lots/${auctionId}/status`, {
+      method: 'POST',
+      token: adminToken,
+      body: { status },
+    });
   },
 
-  async finalizePurchase({ auctionId, ownerId, amount }) {
-    await delay();
+  async finalizePurchase({ eventId, adminToken, auctionId, ownerId, amount }) {
+    return await request(`/auction/${eventId}/lots/${auctionId}/finalize`, {
+      method: 'POST',
+      token: adminToken,
+      body: {
+        lotId: auctionId,
+        ownerId,
+        amount,
+      },
+    });
+  },
 
-    if (!amount || amount <= 0) {
-      throw new Error('Purchase amount must be greater than zero');
-    }
+  async startAuction({ eventId, adminToken, autoProgress = true }) {
+    return await request(`/auction/${eventId}/start`, {
+      method: 'POST',
+      token: adminToken,
+      body: { autoProgress },
+    });
+  },
 
-    const { auctionLot, player } = resolveAuctionContext(auctionId);
+  async stopAuction({ eventId, adminToken }) {
+    return await request(`/auction/${eventId}/stop`, {
+      method: 'POST',
+      token: adminToken,
+    });
+  },
 
-    auctionLot.currentOwnerId = ownerId;
-    auctionLot.currentBid = amount;
-    auctionLot.status = 'sold';
-    auctionLot.timeLeft = 0;
-    player.status = 'sold';
-    player.nmCoin = amount;
+  async nextLot({ eventId, adminToken }) {
+    return await request(`/auction/${eventId}/next-lot`, {
+      method: 'POST',
+      token: adminToken,
+    });
+  },
 
-    return clone({ auctionLot, player });
+  async manualLotOverride({ eventId, adminToken, lotId, status }) {
+    return await request(`/auction/${eventId}/manual-lot-override`, {
+      method: 'POST',
+      token: adminToken,
+      body: { lotId, status },
+    });
   },
 };

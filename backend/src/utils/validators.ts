@@ -80,10 +80,19 @@ export const eventLoginSchema = z.object({
 // Auction schemas
 export const placeBidSchema = z.object({
   lotId: z.string().uuid(),
-  ownerId: z.string().uuid(),
   amount: z.number().int().min(1),
+  ownerId: z.string().uuid().optional(),
 });
 
 export const updateLotStatusSchema = z.object({
   status: z.enum(['sold', 'unsold', 'active']),
+});
+
+export const auctionStartSchema = z.object({
+  autoProgress: z.boolean().optional(),
+});
+
+export const manualLotOverrideSchema = z.object({
+  lotId: z.string().uuid(),
+  status: z.enum(['ACTIVE', 'SOLD', 'UNSOLD']),
 });

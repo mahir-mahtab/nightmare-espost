@@ -9,15 +9,15 @@ import { eventAuthService } from '../data/eventAuthService.js';
 const EventsHubPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState(null);
+  const [events, setEvents] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const payload = await eventsService.getEventSummary();
-        setSummary(payload);
+        const payload = await eventsService.listPublicEvents();
+        setEvents(payload || []);
       } catch (loadError) {
         setError(loadError.message || 'Unable to load event details');
       } finally {
@@ -28,17 +28,21 @@ const EventsHubPage = () => {
     load();
   }, []);
 
-  const handleOpenAuction = () => {
-    if (!summary?.id) {
+  const handleOpenAuction = (eventItem) => {
+    if (!eventItem?.id) {
       return;
     }
 
-    if (eventAuthService.isAuthenticated(summary.id)) {
-      navigate(`/events/${summary.id}/auction`);
+    const sessionKey = eventAuthService.isAuthenticated(eventItem.slug)
+      ? eventItem.slug
+      : (eventAuthService.isAuthenticated(eventItem.id) ? eventItem.id : null);
+
+    if (sessionKey) {
+      navigate(`/events/${sessionKey}/auction`);
       return;
     }
 
-    navigate(`/events/login/${summary.id}`);
+    navigate(`/events/login/${eventItem.slug || eventItem.id}`);
   };
 
   return (
@@ -61,37 +65,43 @@ const EventsHubPage = () => {
             </CyberCard>
           )}
 
-          {!loading && summary && (
-            <CyberCard accent className="p-6 sm:p-8">
+          {!loading && events.length === 0 && !error && (
+            <CyberCard className="p-6">
+              <p className="text-sm text-white/60">No public events available right now.</p>
+            </CyberCard>
+          )}
+
+          {!loading && events.map((eventItem) => (
+            <CyberCard key={eventItem.id} accent className="p-6 sm:p-8">
               <div className="inline-flex items-center gap-2 border border-primary/50 bg-primary/15 px-3 py-1.5 text-[10px] font-black tracking-[0.26em] text-primary uppercase">
                 <Calendar className="h-3.5 w-3.5" />
                 Live Tournament
               </div>
               <h2 className="mt-5 font-display text-3xl leading-tight font-black uppercase sm:text-4xl lg:text-5xl">
-                {summary.title}
-                <span className="block text-primary">{summary.season}</span>
+                {eventItem.title}
+                <span className="block text-primary">{eventItem.season}</span>
               </h2>
               <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/65">
                 Join the live event to participate in player acquisitions. Authenticate to gain full access to bidding and selection features.
               </p>
 
               <div className="mt-7 grid gap-4 sm:grid-cols-3">
-                <StatBox label="Game" value={summary.game} />
-                <StatBox label="Mode" value={summary.mode} />
-                <StatBox label="Stream" value={summary.streamStart} />
+                <StatBox label="Game" value={eventItem.game} />
+                <StatBox label="Mode" value={eventItem.mode} />
+                <StatBox label="Stream" value={eventItem.streamStartTime} />
               </div>
 
               <div className="mt-8 flex justify-end">
                 <button
                   type="button"
-                  onClick={handleOpenAuction}
+                  onClick={() => handleOpenAuction(eventItem)}
                   className="border border-primary/60 bg-primary/20 px-4 py-2 text-[11px] font-bold tracking-[0.2em] text-primary uppercase transition-colors hover:bg-primary/30"
                 >
                   Join Event
                 </button>
               </div>
             </CyberCard>
-          )}
+          ))}
         </div>
       </section>
     </PageShell>

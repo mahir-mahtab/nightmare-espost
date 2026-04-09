@@ -8,15 +8,36 @@ const useEventAuth = (eventId) => {
     setSession(eventAuthService.getSession(eventId));
   }, [eventId]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const validateSession = async () => {
+      const validated = await eventAuthService.validate(eventId);
+      if (isMounted) {
+        setSession(validated);
+      }
+    };
+
+    if (eventId) {
+      validateSession();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId]);
+
   const login = useCallback((payload) => {
-    const nextSession = eventAuthService.login(payload);
-    setSession(nextSession);
-    return nextSession;
+    return eventAuthService.login(payload).then((nextSession) => {
+      setSession(nextSession);
+      return nextSession;
+    });
   }, []);
 
   const logout = useCallback(() => {
-    eventAuthService.logout(eventId);
-    setSession(null);
+    eventAuthService.logout(eventId).finally(() => {
+      setSession(null);
+    });
   }, [eventId]);
 
   const refresh = useCallback(() => {

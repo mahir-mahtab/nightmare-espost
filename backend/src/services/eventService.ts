@@ -39,6 +39,28 @@ export const eventService = {
     });
   },
 
+  async listPublicEvents() {
+    return await prisma.event.findMany({
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        season: true,
+        game: true,
+        mode: true,
+        registrationCount: true,
+        maxSlots: true,
+        streamStartTime: true,
+        bannerUrl: true,
+        status: true,
+      },
+      where: {
+        status: { in: [EventStatus.UPCOMING, EventStatus.LIVE] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
   // Helper: Get event by ID or slug
   async getEvent(idOrSlug: string) {
     // Check if it's a UUID (ID) or slug

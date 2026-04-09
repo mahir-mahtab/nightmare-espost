@@ -14,6 +14,7 @@ import { CyberCard } from '../components/ui/index.jsx';
 import { config } from '../config.js';
 
 const API_URL = `${config.apiUrl}/admin`;
+const AUCTION_API_URL = `${config.apiUrl}/auction`;
 
 const EVENT_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -25,6 +26,10 @@ const EVENT_TABS = [
 ];
 
 const toText = (value) => (value == null ? '' : String(value));
+const toOptional = (value) => {
+  const text = toText(value).trim();
+  return text ? text : undefined;
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -454,10 +459,18 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
 
     try {
       const payload = {
-        ...formData,
+        slug: formData.slug.trim(),
+        title: formData.title.trim(),
+        season: toOptional(formData.season),
+        game: formData.game.trim(),
+        mode: toOptional(formData.mode),
+        password: formData.password,
         registrationCount: Number(formData.registrationCount),
         maxSlots: Number(formData.maxSlots),
+        streamStartTime: toOptional(formData.streamStartTime),
         auctionWindowSeconds: Number(formData.auctionWindowSeconds),
+        bannerUrl: toOptional(formData.bannerUrl),
+        status: formData.status,
       };
 
       const response = await fetch(`${API_URL}/events/${eventData.id}`, {
@@ -1023,6 +1036,11 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
 const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) => {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState('');
+  const [auctionBusy, setAuctionBusy] = useState(false);
+  const [autoProgress, setAutoProgress] = useState(true);
+  const [controlLotId, setControlLotId] = useState('');
+  const [controlOwnerId, setControlOwnerId] = useState('');
+  const [controlAmount, setControlAmount] = useState(0);
   const [createForm, setCreateForm] = useState({
     playerId: players[0]?.id || '',
     currentBid: 0,
@@ -1045,6 +1063,24 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       setCreateForm((prev) => ({ ...prev, playerId: players[0].id }));
     }
   }, [players, createForm.playerId]);
+
+  useEffect(() => {
+    if (!controlLotId && lots[0]?.id) {
+      setControlLotId(lots[0].id);
+      setControlAmount(Number(lots[0].currentBid || 0));
+      setControlOwnerId(lots[0].currentOwnerId || owners[0]?.id || '');
+    }
+  }, [controlLotId, lots, owners]);
+
+  useEffect(() => {
+    const selected = lots.find((lot) => lot.id === controlLotId);
+    if (!selected) {
+      return;
+    }
+
+    setControlAmount(Number(selected.currentBid || 0));
+    setControlOwnerId(selected.currentOwnerId || owners[0]?.id || '');
+  }, [controlLotId, lots, owners]);
 
   const handleCreate = async () => {
     onError('');
@@ -1146,8 +1182,210 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
     }
   };
 
+  const callAuctionControl = async (path, body, successMessage) => {
+    onError('');
+    setAuctionBusy(true);
+    try {
+      const response = await fetch(`${AUCTION_API_URL}/${eventId}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body || {}),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || 'Auction action failed');
+      }
+      onChanged(successMessage);
+    } catch (err) {
+      onError(err.message || 'Auction action failed');
+    } finally {
+      setAuctionBusy(false);
+    }
+  };
+
+  const handleFinalizeSold = async () => {
+    if (!controlLotId) {
+      onError('Select a lot first');
+      return;
+    }
+
+    if (!controlOwnerId) {
+      onError('Select winning owner');
+      return;
+    }
+
+    if (!controlAmount || Number(controlAmount) <= 0) {
+      onError('Enter a valid sold amount');
+      return;
+    }
+
+    onError('');
+    setAuctionBusy(true);
+    try {
+      const response = await fetch(`${AUCTION_API_URL}/${eventId}/lots/${controlLotId}/finalize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          lotId: controlLotId,
+          ownerId: controlOwnerId,
+          amount: Number(controlAmount),
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || 'Finalize failed');
+      }
+
+      onChanged('Lot finalized and sold successfully');
+    } catch (err) {
+      onError(err.message || 'Finalize failed');
+    } finally {
+      setAuctionBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <div className="rounded border border-primary/30 bg-primary/5 p-4">
+        <p className="mb-3 text-xs font-bold tracking-[0.16em] text-primary uppercase">Auction Control Center</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+            Control Lot
+            <select
+              value={controlLotId}
+              onChange={(e) => setControlLotId(e.target.value)}
+              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+            >
+              {lots.map((lot) => (
+                <option key={lot.id} value={lot.id}>
+                  #{lot.lotOrder} - {lot.player?.name || lot.playerId}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+            Winning Owner
+            <select
+              value={controlOwnerId}
+              onChange={(e) => setControlOwnerId(e.target.value)}
+              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+            >
+              <option value="">Select owner</option>
+              {owners.map((owner) => (
+                <option key={owner.id} value={owner.id}>{owner.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+            Sold Amount
+            <input
+              type="number"
+              value={controlAmount}
+              onChange={(e) => setControlAmount(Number(e.target.value || 0))}
+              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+            />
+          </label>
+
+          <label className="flex items-center gap-2 pt-6 text-xs font-bold uppercase text-white/80">
+            <input
+              type="checkbox"
+              checked={autoProgress}
+              onChange={(e) => setAutoProgress(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Auto Progress
+          </label>
+
+          <button
+            type="button"
+            disabled={auctionBusy}
+            onClick={handleFinalizeSold}
+            className="h-10 self-end rounded border border-green-500/50 bg-green-500/10 px-3 text-xs font-bold uppercase text-green-300 disabled:opacity-50"
+          >
+            Finalize Sold
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-4">
+        <button
+          type="button"
+          disabled={auctionBusy}
+          onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started')}
+          className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
+        >
+          Start Auction
+        </button>
+        <button
+          type="button"
+          disabled={auctionBusy}
+          onClick={() => callAuctionControl('/stop', {}, 'Auction stopped')}
+          className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
+        >
+          Stop Auction
+        </button>
+        <button
+          type="button"
+          disabled={auctionBusy}
+          onClick={() => callAuctionControl('/next-lot', {}, 'Moved to next lot')}
+          className="h-10 rounded border border-amber-300/50 bg-amber-300/10 px-3 text-xs font-bold uppercase text-amber-300 disabled:opacity-50"
+        >
+          Next Lot
+        </button>
+        <button
+          type="button"
+          disabled={auctionBusy || !controlLotId}
+          onClick={() => {
+            callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'ACTIVE' }, 'Selected lot activated');
+          }}
+          className="h-10 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-bold uppercase text-primary disabled:opacity-50"
+        >
+          Activate Selected
+        </button>
+      </div>
+
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-3">
+        <button
+          type="button"
+          disabled={auctionBusy || !controlLotId}
+          onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'UNSOLD' }, 'Selected lot marked unsold')}
+          className="h-10 rounded border border-yellow-500/50 bg-yellow-500/10 px-3 text-xs font-bold uppercase text-yellow-300 disabled:opacity-50"
+        >
+          Mark Unsold
+        </button>
+        <button
+          type="button"
+          disabled={auctionBusy || !controlLotId || !controlOwnerId}
+          onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'SOLD' }, 'Selected lot set sold')}
+          className="h-10 rounded border border-green-500/50 bg-green-500/10 px-3 text-xs font-bold uppercase text-green-300 disabled:opacity-50"
+        >
+          Mark Sold
+        </button>
+        <button
+          type="button"
+          disabled={auctionBusy || !controlLotId}
+          onClick={() => {
+            setEditingId(controlLotId);
+            const selected = lots.find((lot) => lot.id === controlLotId);
+            if (selected) {
+              startEdit(selected);
+            }
+          }}
+          className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
+        >
+          Open in Row Editor
+        </button>
+      </div>
+
       <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-6">
         <select value={createForm.playerId} onChange={(e) => setCreateForm({ ...createForm, playerId: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary">
           {players.map((player) => (
@@ -1355,10 +1593,17 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
 
     try {
       const payload = {
-        ...formData,
+        slug: formData.slug.trim(),
+        title: formData.title.trim(),
+        season: toOptional(formData.season),
+        game: formData.game.trim(),
+        mode: toOptional(formData.mode),
+        password: formData.password,
         registrationCount: Number(formData.registrationCount),
         maxSlots: Number(formData.maxSlots),
+        streamStartTime: toOptional(formData.streamStartTime),
         auctionWindowSeconds: Number(formData.auctionWindowSeconds),
+        bannerUrl: toOptional(formData.bannerUrl),
       };
 
       const response = await fetch(`${API_URL}/events`, {
