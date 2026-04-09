@@ -1,0 +1,5 @@
+name,photo,basePrice,category
+Player One,https://example.com/player1.png,1000,All-Rounder
+Player Two,https://example.com/player2.png,1500,Batsman
+Player Three,https://example.com/player3.png,2000,Bowler
+Player Four,https://example.com/player4.png,1200,Wicket-Keeper

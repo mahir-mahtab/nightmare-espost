@@ -1,0 +1,54 @@
+{
+  "owners": [
+    {
+      "name": "Owner Name 1",
+      "avatarUrl": "https://images.unsplash.com/photo-1615109398623-88346a601842?w=200&h=200&fit=crop"
+    },
+    {
+      "name": "Owner Name 2",
+      "avatarUrl": "https://images.unsplash.com/photo-1628890920690-9e29d001f7f6?w=200&h=200&fit=crop"
+    }
+  ],
+  "teams": [
+    {
+      "name": "Team Name 1",
+      "ownerId": "REPLACE_WITH_OWNER_UUID_FROM_DATABASE",
+      "coinsLeft": 5000
+    },
+    {
+      "name": "Team Name 2",
+      "ownerId": "REPLACE_WITH_OWNER_UUID_FROM_DATABASE",
+      "coinsLeft": 5000
+    }
+  ],
+  "players": [
+    {
+      "name": "Player Name 1",
+      "role": "IGL",
+      "rankPoint": 95,
+      "basePrice": 1000,
+      "imageUrl": "https://images.unsplash.com/photo-1508341591423-4347099e1f19?w=500&h=600&fit=crop"
+    },
+    {
+      "name": "Player Name 2",
+      "role": "Assaulter",
+      "rankPoint": 88,
+      "basePrice": 850,
+      "imageUrl": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=500&h=600&fit=crop"
+    },
+    {
+      "name": "Player Name 3",
+      "role": "Support",
+      "rankPoint": 85,
+      "basePrice": 800,
+      "imageUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&h=600&fit=crop"
+    }
+  ],
+  "notes": {
+    "workflow": "1. Upload owners first, 2. Get owner UUIDs from Prisma Studio or API response, 3. Upload teams with correct ownerId, 4. Upload players",
+    "imageUrls": "Use Unsplash or any public image URL. Format: ?w=WIDTH&h=HEIGHT&fit=crop",
+    "roles": "Common roles: IGL, Assaulter, Support, Sniper, ES-P, NES-P",
+    "basePrice": "Starting auction price in coins (e.g., 500, 1000, 1500)",
+    "coinsLeft": "Total coins each team has for bidding (e.g., 5000)"
+  }
+}
