@@ -204,7 +204,6 @@ const PlayerGrid = ({ players, onSelect }) => (
 const AuctionHub = ({
   auction,
   selectedAuctionId,
-  setSelectedAuctionId,
   bidAmount,
   setBidAmount,
   selectedPlayer,
@@ -212,18 +211,9 @@ const AuctionHub = ({
   playerById,
   selectedOwner,
   owners,
-  selectedOwnerId,
-  setSelectedOwnerId,
   canBid,
-  canAdminControl,
   increments,
-  activeTab,
   onPlaceBid,
-  onStatusChange,
-  onFinalizePurchase,
-  onStartAuction,
-  onStopAuction,
-  onNextLot,
 }) => {
   const activePlayerName = selectedPlayer?.name || 'No player selected';
 
@@ -249,7 +239,7 @@ const AuctionHub = ({
                 <h3 className="mt-1 font-display text-xl font-black uppercase text-white md:text-2xl">{activePlayerName}</h3>
               </div>
               <span className="rounded border border-primary/50 bg-primary/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-primary uppercase">
-                {activeTab === 'auction' ? 'Auction' : 'Buy Mode'}
+                Live Auction
               </span>
             </div>
 
@@ -303,61 +293,11 @@ const AuctionHub = ({
                   <Timer className="h-4 w-4 text-primary" />
                   {String(selectedAuction?.timeLeft || 0).padStart(2, '0')} SEC
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onStatusChange('sold')}
-                    disabled={!canAdminControl}
-                    className="border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-green-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Acquired
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onStatusChange('unsold')}
-                    disabled={!canAdminControl}
-                    className="border border-yellow-500/50 bg-yellow-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-yellow-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Unsold
-                  </button>
-                  {activeTab === 'players-buy' && (
-                    <button
-                      type="button"
-                      onClick={onFinalizePurchase}
-                      disabled={!canAdminControl}
-                      className="border border-primary/60 bg-primary/20 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-primary uppercase disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Confirm
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={onStartAuction}
-                    disabled={!canAdminControl}
-                    className="border border-primary/50 bg-primary/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-primary uppercase disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Start
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onStopAuction}
-                    disabled={!canAdminControl}
-                    className="border border-white/30 bg-black/40 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-white uppercase disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Stop
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onNextLot}
-                    disabled={!canAdminControl}
-                    className="border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-amber-300 uppercase disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Next Lot
-                  </button>
-                </div>
+                <p className="text-[11px] text-white/70">
+                  Current Leader: <span className="font-bold text-primary">{selectedOwner?.name || 'No bids yet'}</span>
+                </p>
               </div>
-              {!canBid && <p className="text-[11px] text-amber-300">View-only mode active for this session.</p>}
-              {!canAdminControl && <p className="text-[11px] text-white/60">Admin controls disabled (login via /admin/login in this browser).</p>}
+              {!canBid && <p className="text-[11px] text-amber-300">Viewer mode active. Only owner sessions can place bids.</p>}
             </div>
           </div>
         </div>
@@ -379,15 +319,10 @@ const AuctionHub = ({
               const isActive = lot.id === selectedAuctionId;
 
               return (
-                <button
+                <div
                   key={lot.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedAuctionId(lot.id);
-                    setBidAmount(String(lot.currentBid));
-                  }}
                   className={`relative overflow-hidden rounded-md border p-1.5 text-left transition-all ${
-                    isActive ? 'border-primary/70 bg-primary/10' : 'border-white/15 bg-black/50 hover:border-primary/45'
+                    isActive ? 'border-primary/70 bg-primary/10' : 'border-white/15 bg-black/50'
                   }`}
                 >
                   <div className="relative overflow-hidden rounded-sm bg-white">
@@ -395,7 +330,7 @@ const AuctionHub = ({
                     {lot.status !== 'active' && <span className="sold-stamp">{lot.status}</span>}
                   </div>
                   <p className="mt-1 truncate text-[10px] font-bold tracking-[0.1em] text-white uppercase">{player.name}</p>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -405,28 +340,21 @@ const AuctionHub = ({
           <p className="font-display text-lg font-black uppercase text-white">Bidders</p>
           <div className="mt-3 space-y-2">
             {owners.map((owner) => {
-              const isSelected = owner.id === selectedOwnerId;
               const auctionHolder = selectedOwner?.id === owner.id;
 
               return (
-                <button
+                <div
                   key={owner.id}
-                  type="button"
-                  onClick={() => {
-                    if (canBid) {
-                      setSelectedOwnerId(owner.id);
-                    }
-                  }}
                   className={`flex w-full items-center gap-2 rounded-md border p-2 text-left transition-all ${
-                    isSelected ? 'border-primary/70 bg-primary/10' : 'border-white/15 bg-black/45 hover:border-primary/45'
-                  } ${!canBid ? 'cursor-not-allowed opacity-70' : ''}`}
+                    auctionHolder ? 'border-primary/70 bg-primary/10' : 'border-white/15 bg-black/45'
+                  }`}
                 >
                   <img src={owner.avatar} alt={owner.name} className="h-9 w-9 rounded object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[11px] font-bold tracking-[0.08em] text-white uppercase">{owner.name}</p>
-                    <p className="text-[10px] text-white/45">{auctionHolder ? 'Top bid' : 'Ready'}</p>
+                    <p className="text-[10px] text-white/45">{auctionHolder ? 'Top bid' : 'Watching'}</p>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -498,8 +426,6 @@ const EventsPage = () => {
   const { session, logout } = useEventAuth(eventId);
   const sessionEventId = session?.eventId || '';
   const canBid = session?.role === 'owner' && Boolean(session?.ownerId);
-  const adminToken = localStorage.getItem('admin-token');
-  const canAdminControl = Boolean(adminToken);
 
   const tabIds = useMemo(() => EVENT_ROUTE_TABS.map((item) => item.id), []);
 
@@ -521,7 +447,6 @@ const EventsPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [selectedAuctionId, setSelectedAuctionId] = useState('');
-  const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [bidAmount, setBidAmount] = useState('');
   const [socketConnected, setSocketConnected] = useState(false);
   const [soldAnnouncement, setSoldAnnouncement] = useState(null);
@@ -531,12 +456,6 @@ const EventsPage = () => {
       navigate(`/events/${eventId}/event`, { replace: true });
     }
   }, [activeTab, eventId, navigate, tabIds]);
-
-  useEffect(() => {
-    if (canBid && session?.ownerId) {
-      setSelectedOwnerId(session.ownerId);
-    }
-  }, [canBid, session]);
 
   const loadBaseData = useCallback(async () => {
     setLoading(true);
@@ -566,14 +485,13 @@ const EventsPage = () => {
       setAuction(auctionPayload);
       setIncrements(incrementsPayload);
       setSelectedAuctionId(auctionPayload.activeAuctionId);
-      setSelectedOwnerId(canBid && session?.ownerId ? session.ownerId : ownerPayload[0]?.id || '');
       setBidAmount(String((auctionPayload.lots || []).find((lot) => lot.id === auctionPayload.activeAuctionId)?.currentBid || auctionPayload.lots?.[0]?.currentBid || 0));
     } catch (loadError) {
       setError(loadError.message || 'Failed to load event data');
     } finally {
       setLoading(false);
     }
-  }, [canBid, session, eventId]);
+  }, [session, eventId]);
 
   const refreshBoard = useCallback(async () => {
     const [auctionPayload, allPlayersPayload, filteredPlayers] = await Promise.all([
@@ -913,7 +831,7 @@ const EventsPage = () => {
 
   const handlePlaceBid = async () => {
     if (!canBid || !session?.ownerId) {
-      setError('Administrative access required to place bids');
+      setError('Owner session required to place bids');
       return;
     }
 
@@ -936,110 +854,9 @@ const EventsPage = () => {
     }
   };
 
-  const handleStatusChange = async (status) => {
-    if (!canAdminControl) {
-      setError('Admin control token required');
-      return;
-    }
-
-    try {
-      await eventsService.markAuctionStatus({
-        eventId,
-        adminToken,
-        auctionId: selectedAuctionId,
-        status,
-      });
-      await refreshBoard();
-      showActionState(`Player status updated`);
-    } catch (statusError) {
-      setError(statusError.message || 'Unable to update status');
-    }
-  };
-
-  const handleFinalizePurchase = async () => {
-    if (!canAdminControl) {
-      setError('Admin control token required');
-      return;
-    }
-
-    if (!selectedOwnerId) {
-      setError('Select owner before finalizing purchase');
-      return;
-    }
-
-    try {
-      await eventsService.finalizePurchase({
-        eventId,
-        adminToken,
-        auctionId: selectedAuctionId,
-        ownerId: selectedOwnerId,
-        amount: Number(bidAmount),
-      });
-      await refreshBoard();
-      showActionState('Selection confirmed');
-    } catch (purchaseError) {
-      setError(purchaseError.message || 'Unable to confirm selection');
-    }
-  };
-
   const handleLogout = () => {
     logout();
     navigate('/events');
-  };
-
-  const handleStartAuction = async () => {
-    if (!canAdminControl) {
-      setError('Admin control token required');
-      return;
-    }
-
-    try {
-      await eventsService.startAuction({
-        eventId,
-        adminToken,
-        autoProgress: true,
-      });
-      await refreshBoard();
-      showActionState('Auction started');
-    } catch (startError) {
-      setError(startError.message || 'Unable to start auction');
-    }
-  };
-
-  const handleStopAuction = async () => {
-    if (!canAdminControl) {
-      setError('Admin control token required');
-      return;
-    }
-
-    try {
-      await eventsService.stopAuction({
-        eventId,
-        adminToken,
-      });
-      await refreshBoard();
-      showActionState('Auction stopped');
-    } catch (stopError) {
-      setError(stopError.message || 'Unable to stop auction');
-    }
-  };
-
-  const handleNextLot = async () => {
-    if (!canAdminControl) {
-      setError('Admin control token required');
-      return;
-    }
-
-    try {
-      await eventsService.nextLot({
-        eventId,
-        adminToken,
-      });
-      await refreshBoard();
-      showActionState('Moved to next lot');
-    } catch (nextError) {
-      setError(nextError.message || 'Unable to move next lot');
-    }
   };
 
   const renderTab = () => {
@@ -1124,7 +941,6 @@ const EventsPage = () => {
       <AuctionHub
         auction={auction}
         selectedAuctionId={selectedAuctionId}
-        setSelectedAuctionId={setSelectedAuctionId}
         bidAmount={bidAmount}
         setBidAmount={setBidAmount}
         selectedPlayer={selectedPlayer}
@@ -1132,18 +948,9 @@ const EventsPage = () => {
         playerById={playerById}
         selectedOwner={selectedOwner}
         owners={owners}
-        selectedOwnerId={selectedOwnerId}
-        setSelectedOwnerId={setSelectedOwnerId}
         canBid={canBid}
-        canAdminControl={canAdminControl}
         increments={increments}
-        activeTab={activeTab}
         onPlaceBid={handlePlaceBid}
-        onStatusChange={handleStatusChange}
-        onFinalizePurchase={handleFinalizePurchase}
-        onStartAuction={handleStartAuction}
-        onStopAuction={handleStopAuction}
-        onNextLot={handleNextLot}
       />
     );
   };
