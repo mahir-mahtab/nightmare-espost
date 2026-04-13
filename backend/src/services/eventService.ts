@@ -217,6 +217,12 @@ export const eventService = {
 
     return {
       ...event,
+      auctionRuntime: {
+        isRunning: Boolean(runtimeState?.isRunning),
+        autoProgress: Boolean(runtimeState?.autoProgress),
+        activeLotId: runtimeState?.activeLotId || null,
+        activeLotEndsAt: activeLotEndsAt ? new Date(activeLotEndsAt).toISOString() : null,
+      },
       auctionLots,
     };
   },
@@ -496,6 +502,18 @@ export const eventService = {
   // Get auction board
   async getAuctionBoard(eventIdOrSlug: string) {
     const event = await this.getEvent(eventIdOrSlug);
+    let runtimeState: any = null;
+
+    try {
+      const rawState = await redis.get(runtimeRedisKey(event.id));
+      if (rawState) {
+        runtimeState = JSON.parse(rawState);
+      }
+    } catch {
+      runtimeState = null;
+    }
+
+    const activeLotEndsAt = runtimeState?.activeLotEndsAt ? Number(runtimeState.activeLotEndsAt) : null;
     
     const lots = await prisma.auctionLot.findMany({
       where: { eventId: event.id },
@@ -518,6 +536,9 @@ export const eventService = {
 
     return {
       activeAuctionId: activeLot?.id || null,
+      isRunning: Boolean(runtimeState?.isRunning),
+      autoProgress: Boolean(runtimeState?.autoProgress),
+      activeLotEndsAt: activeLotEndsAt ? new Date(activeLotEndsAt).toISOString() : null,
       lotDuration: event.auctionWindowSeconds,
       lots: lots.map((lot: any) => ({
         id: lot.id,
@@ -533,10 +554,14 @@ export const eventService = {
           ? (lot.player.soldToTeam?.owner?.name || null)
           : null,
         status: lot.status,
-        timeLeft: lot.endsAt
+        timeLeft: (runtimeState?.activeLotId === lot.id && activeLotEndsAt)
+          ? Math.max(0, Math.ceil((activeLotEndsAt - now) / 1000))
+          : lot.endsAt
           ? Math.max(0, Math.ceil((new Date(lot.endsAt).getTime() - now) / 1000))
           : 0,
-        endsAt: lot.endsAt,
+        endsAt: (runtimeState?.activeLotId === lot.id && activeLotEndsAt)
+          ? new Date(activeLotEndsAt).toISOString()
+          : lot.endsAt,
         lotOrder: lot.lotOrder,
       })),
     };

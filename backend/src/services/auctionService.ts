@@ -396,6 +396,13 @@ export const auctionService = {
         throw new AppError('Auction lot was not found for this event.', 404, 'AUCTION_LOT_NOT_FOUND');
       }
 
+      if (
+        status === 'ACTIVE'
+        && (lot.status === AuctionStatus.SOLD || lot.status === AuctionStatus.UNSOLD)
+      ) {
+        throw new AppError('Finished lots cannot be activated again.', 400, 'LOT_ALREADY_FINALIZED');
+      }
+
       if (status === 'ACTIVE') {
         const endsAtMs = Date.now() + (event.auctionWindowSeconds * 1000);
 
@@ -621,6 +628,13 @@ export const auctionService = {
         throw new AppError('Auction lot was not found for this event.', 404, 'AUCTION_LOT_NOT_FOUND');
       }
 
+      if (
+        status === 'ACTIVE'
+        && (lot.status === AuctionStatus.SOLD || lot.status === AuctionStatus.UNSOLD)
+      ) {
+        throw new AppError('Finished lots cannot be activated again.', 400, 'LOT_ALREADY_FINALIZED');
+      }
+
       if (status === 'ACTIVE') {
         const endsAtMs = Date.now() + (event.auctionWindowSeconds * 1000);
 
@@ -665,6 +679,66 @@ export const auctionService = {
       return {
         runtime,
         lot: currentLot,
+      };
+    });
+  },
+
+  async updateRuntimeSettings(eventId: string, settings: { autoProgress?: boolean }) {
+    return withLock(eventId, async () => {
+      const event = await eventService.getEventById(eventId);
+      const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
+
+      if (typeof settings.autoProgress === 'boolean') {
+        runtime.autoProgress = settings.autoProgress;
+      }
+
+      await this.saveRuntimeState(event.id, runtime);
+      return runtime;
+    });
+  },
+
+  async extendActiveLotTimer(eventId: string, seconds: number) {
+    return withLock(eventId, async () => {
+      const event = await eventService.getEventById(eventId);
+      const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
+
+      if (!runtime.isRunning) {
+        throw new AppError('Auction is currently stopped. Start auction before extending timer.', 400, 'AUCTION_NOT_RUNNING');
+      }
+
+      if (!runtime.activeLotId) {
+        throw new AppError('There is no active lot to extend timer for.', 400, 'NO_ACTIVE_LOT');
+      }
+
+      const activeLot = await prisma.auctionLot.findFirst({
+        where: { id: runtime.activeLotId, eventId: event.id },
+      });
+
+      if (!activeLot) {
+        throw new AppError('Current active lot was not found in database.', 404, 'ACTIVE_LOT_NOT_FOUND');
+      }
+
+      if (activeLot.status !== AuctionStatus.ACTIVE) {
+        throw new AppError('Selected lot is not active for timer extension.', 400, 'LOT_NOT_ACTIVE');
+      }
+
+      const baseEndsAt = runtime.activeLotEndsAt
+        || (activeLot.endsAt ? activeLot.endsAt.getTime() : Date.now() + (event.auctionWindowSeconds * 1000));
+      const extendedEndsAt = baseEndsAt + (seconds * 1000);
+
+      runtime.activeLotEndsAt = extendedEndsAt;
+      await this.saveRuntimeState(event.id, runtime);
+
+      await prisma.auctionLot.update({
+        where: { id: activeLot.id },
+        data: { endsAt: new Date(extendedEndsAt) },
+      });
+
+      return {
+        eventId: event.id,
+        activeLotId: activeLot.id,
+        activeLotEndsAt: extendedEndsAt,
+        timeLeft: computeTimeLeft(extendedEndsAt),
       };
     });
   },

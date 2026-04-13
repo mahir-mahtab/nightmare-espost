@@ -15,5 +15,7 @@ router.post('/:eventId/start', requireAdmin, auctionController.startAuction);
 router.post('/:eventId/stop', requireAdmin, auctionController.stopAuction);
 router.post('/:eventId/next-lot', requireAdmin, auctionController.nextLot);
 router.post('/:eventId/manual-lot-override', requireAdmin, auctionController.manualLotOverride);
+router.patch('/:eventId/runtime', requireAdmin, auctionController.updateRuntime);
+router.post('/:eventId/extend-timer', requireAdmin, auctionController.extendActiveTimer);
 
 export default router;

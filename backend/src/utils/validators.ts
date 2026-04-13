@@ -100,3 +100,7 @@ export const manualLotOverrideSchema = z.object({
   lotId: z.string().uuid(),
   status: z.enum(['ACTIVE', 'SOLD', 'UNSOLD']),
 });
+
+export const extendTimerSchema = z.object({
+  seconds: z.number().int().min(1).max(300),
+});

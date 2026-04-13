@@ -6,6 +6,7 @@ import {
   updateLotStatusSchema,
   auctionStartSchema,
   manualLotOverrideSchema,
+  extendTimerSchema,
 } from '../utils/validators.js';
 import { socketServer } from '../realtime/socketServer.js';
 
@@ -191,6 +192,43 @@ export const auctionController = {
         eventId,
         newLotId: result.runtime.activeLotId,
       });
+      await socketServer.emitFullAuctionState(eventId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async updateRuntime(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const body = auctionStartSchema.parse(req.body || {});
+
+      const runtime = await auctionService.updateRuntimeSettings(eventId, {
+        autoProgress: body.autoProgress,
+      });
+
+      await socketServer.emitFullAuctionState(eventId);
+
+      res.json({
+        success: true,
+        data: runtime,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async extendActiveTimer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = req.params;
+      const body = extendTimerSchema.parse(req.body || {});
+
+      const result = await auctionService.extendActiveLotTimer(eventId, body.seconds);
       await socketServer.emitFullAuctionState(eventId);
 
       res.json({

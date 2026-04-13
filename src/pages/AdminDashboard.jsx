@@ -387,6 +387,7 @@ const AdminDashboard = () => {
                   {activeTab === 'lots' && (
                     <LotsTab
                       lots={eventData.auctionLots || []}
+                      runtime={eventData.auctionRuntime || null}
                       players={eventData.players || []}
                       owners={eventData.owners || []}
                       eventId={eventData.id}
@@ -1068,11 +1069,12 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
   );
 };
 
-const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) => {
+const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onChanged }) => {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState('');
   const [auctionBusy, setAuctionBusy] = useState(false);
-  const [autoProgress, setAutoProgress] = useState(true);
+  const [autoProgress, setAutoProgress] = useState(Boolean(runtime?.autoProgress));
+  const [extendSeconds, setExtendSeconds] = useState(15);
   const [controlLotId, setControlLotId] = useState('');
   const [controlOwnerId, setControlOwnerId] = useState('');
   const [controlAmount, setControlAmount] = useState(0);
@@ -1119,10 +1121,19 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
     [lots, controlLotId]
   );
 
+  const selectedLotStatus = selectedLot?.status || '';
+  const isSelectedFinished = selectedLotStatus === 'SOLD' || selectedLotStatus === 'UNSOLD';
+  const isSelectedPending = selectedLotStatus === 'PENDING';
+  const isAuctionRunning = Boolean(runtime?.isRunning);
+
   const activeLot = useMemo(
     () => lots.find((lot) => lot.status === 'ACTIVE') || null,
     [lots]
   );
+
+  useEffect(() => {
+    setAutoProgress(Boolean(runtime?.autoProgress));
+  }, [runtime?.autoProgress]);
 
   const lotSummary = useMemo(() => ({
     total: lots.length,
@@ -1243,6 +1254,61 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       onChanged(successMessage);
     } catch (err) {
       onError(err.message || 'Auction action failed');
+    } finally {
+      setAuctionBusy(false);
+    }
+  };
+
+  const handleSetAutoProgress = async (nextValue) => {
+    onError('');
+    setAuctionBusy(true);
+
+    try {
+      const response = await fetch(`${AUCTION_API_URL}/${eventId}/runtime`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ autoProgress: nextValue }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, 'Failed to update runtime settings'));
+      }
+
+      setAutoProgress(nextValue);
+      onChanged(`Auto progress ${nextValue ? 'enabled' : 'disabled'}`);
+    } catch (err) {
+      onError(err.message || 'Failed to update runtime settings');
+    } finally {
+      setAuctionBusy(false);
+    }
+  };
+
+  const handleExtendTimer = async () => {
+    onError('');
+    setAuctionBusy(true);
+
+    try {
+      const response = await fetch(`${AUCTION_API_URL}/${eventId}/extend-timer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ seconds: Number(extendSeconds) }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, 'Failed to extend active lot timer'));
+      }
+
+      onChanged(`Active lot timer extended by ${Number(extendSeconds)}s`);
+    } catch (err) {
+      onError(err.message || 'Failed to extend active lot timer');
     } finally {
       setAuctionBusy(false);
     }
@@ -1375,6 +1441,9 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
               <p className="mt-1 text-xs text-white/65">
                 {activeLot ? `Bid: ${activeLot.currentBid || 0} | Time Left: ${activeLot.timeLeft || 0}s` : 'Start auction or activate a lot to begin.'}
               </p>
+              <p className="mt-1 text-[10px] font-bold tracking-[0.14em] text-white/45 uppercase">
+                Runtime: {isAuctionRunning ? 'Running' : 'Stopped'} | Auto Progress: {autoProgress ? 'On' : 'Off'}
+              </p>
             </div>
 
             <div className="rounded border border-white/20 bg-black/50 p-3">
@@ -1435,17 +1504,40 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
                 <input
                   type="checkbox"
                   checked={autoProgress}
-                  onChange={(e) => setAutoProgress(e.target.checked)}
+                  onChange={(e) => handleSetAutoProgress(e.target.checked)}
+                  disabled={auctionBusy}
                   className="h-4 w-4"
                 />
                 Auto Progress
+              </label>
+
+              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+                Extend Timer (sec)
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={extendSeconds}
+                    onChange={(e) => setExtendSeconds(Number(e.target.value || 1))}
+                    className="h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    disabled={auctionBusy || !activeLot || !isAuctionRunning || Number(extendSeconds) <= 0}
+                    onClick={handleExtendTimer}
+                    className="h-10 whitespace-nowrap rounded border border-indigo-400/55 bg-indigo-400/10 px-3 text-[11px] font-bold uppercase text-indigo-300 disabled:opacity-50"
+                  >
+                    Extend
+                  </button>
+                </div>
               </label>
             </div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
               <button
                 type="button"
-                disabled={auctionBusy}
+                disabled={auctionBusy || isAuctionRunning || lotSummary.pending === 0}
                 onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started')}
                 className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
               >
@@ -1453,7 +1545,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
               </button>
               <button
                 type="button"
-                disabled={auctionBusy}
+                disabled={auctionBusy || !isAuctionRunning}
                 onClick={() => callAuctionControl('/stop', {}, 'Auction stopped')}
                 className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
               >
@@ -1461,7 +1553,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
               </button>
               <button
                 type="button"
-                disabled={auctionBusy}
+                disabled={auctionBusy || !activeLot || !isAuctionRunning}
                 onClick={() => callAuctionControl('/next-lot', {}, 'Moved to next lot')}
                 className="h-10 rounded border border-amber-300/50 bg-amber-300/10 px-3 text-xs font-bold uppercase text-amber-300 disabled:opacity-50"
               >
@@ -1469,7 +1561,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
               </button>
               <button
                 type="button"
-                disabled={auctionBusy || !controlLotId}
+                disabled={auctionBusy || !controlLotId || isSelectedFinished || !isSelectedPending}
                 onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'ACTIVE' }, 'Selected lot activated')}
                 className="h-10 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-bold uppercase text-primary disabled:opacity-50"
               >
@@ -1482,7 +1574,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
         <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
           <button
             type="button"
-            disabled={auctionBusy || !controlLotId || !controlOwnerId || Number(controlAmount || 0) <= 0}
+            disabled={auctionBusy || !controlLotId || !controlOwnerId || Number(controlAmount || 0) <= 0 || isSelectedFinished}
             onClick={handleFinalizeSold}
             className="h-10 rounded border border-green-500/60 bg-green-500/15 px-3 text-[11px] font-bold uppercase text-green-300 disabled:opacity-50"
           >
@@ -1490,7 +1582,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
           </button>
           <button
             type="button"
-            disabled={auctionBusy || !controlLotId}
+            disabled={auctionBusy || !controlLotId || isSelectedFinished}
             onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'SOLD' }, 'Selected lot marked sold')}
             className="h-10 rounded border border-emerald-400/45 bg-emerald-400/10 px-3 text-[11px] font-bold uppercase text-emerald-300 disabled:opacity-50"
           >
@@ -1498,7 +1590,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
           </button>
           <button
             type="button"
-            disabled={auctionBusy || !controlLotId}
+            disabled={auctionBusy || !controlLotId || isSelectedFinished}
             onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'UNSOLD' }, 'Selected lot marked unsold')}
             className="h-10 rounded border border-yellow-500/55 bg-yellow-500/10 px-3 text-[11px] font-bold uppercase text-yellow-300 disabled:opacity-50"
           >
@@ -1526,6 +1618,9 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
           >
             Open Row Editor
           </button>
+        </div>
+        <div className="mt-3 rounded border border-white/15 bg-black/35 p-2 text-[10px] text-white/70">
+          Workflow guardrails: only pending lots can be activated; sold/unsold lots are finalized and cannot be restarted; timer extension only works while auction is running with an active lot.
         </div>
       </div>
 
