@@ -45,6 +45,23 @@ const decodeJwtExp = (token) => {
   }
 };
 
+const formatApiError = (payload, fallbackMessage) => {
+  const baseMessage = payload?.message || fallbackMessage;
+
+  if (Array.isArray(payload?.details) && payload.details.length > 0) {
+    const first = payload.details[0];
+    if (first?.path && first?.message) {
+      return `${baseMessage} (${first.path}: ${first.message})`;
+    }
+  }
+
+  if (payload?.code) {
+    return `${baseMessage} [${payload.code}]`;
+  }
+
+  return baseMessage;
+};
+
 export const eventAuthService = {
   getSession(eventId) {
     if (!eventId) {
@@ -99,7 +116,7 @@ export const eventAuthService = {
 
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(payload.message || 'Login failed');
+      throw new Error(formatApiError(payload, 'Login failed'));
     }
 
     const sessionToken = payload?.data?.sessionToken;

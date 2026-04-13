@@ -27,7 +27,7 @@ export const adminController = {
       const { password } = adminLoginSchema.parse(req.body);
 
       if (!authService.verifyAdminPassword(password)) {
-        throw new AppError('Invalid admin password', 401);
+        throw new AppError('The admin password is incorrect.', 401, 'ADMIN_PASSWORD_INVALID');
       }
 
       const token = authService.generateAdminToken();

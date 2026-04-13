@@ -45,6 +45,23 @@ const toLocalDateTimeInput = (value) => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
 
+const apiErrorMessage = (payload, fallbackMessage) => {
+  const baseMessage = payload?.message || fallbackMessage;
+
+  if (Array.isArray(payload?.details) && payload.details.length > 0) {
+    const first = payload.details[0];
+    if (first?.path && first?.message) {
+      return `${baseMessage} (${first.path}: ${first.message})`;
+    }
+  }
+
+  if (payload?.code) {
+    return `${baseMessage} [${payload.code}]`;
+  }
+
+  return baseMessage;
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('admin-token');
@@ -78,16 +95,17 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      const payload = await response.json();
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem('admin-token');
           navigate('/admin/login');
           return;
         }
-        throw new Error('Failed to fetch events');
+        throw new Error(apiErrorMessage(payload, 'Failed to fetch events'));
       }
 
-      const payload = await response.json();
       const list = payload.data || [];
       setEvents(list);
 
@@ -115,16 +133,17 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      const payload = await response.json();
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem('admin-token');
           navigate('/admin/login');
           return;
         }
-        throw new Error('Failed to load event workspace');
+        throw new Error(apiErrorMessage(payload, 'Failed to load event workspace'));
       }
 
-      const payload = await response.json();
       setEventData(payload.data);
     } catch (fetchError) {
       setError(fetchError.message || 'Failed to load event workspace');
@@ -168,8 +187,10 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      const payload = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to delete event');
+        throw new Error(apiErrorMessage(payload, 'Failed to delete event'));
       }
 
       setMessage('Event deleted successfully');
@@ -498,7 +519,7 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to update event');
+        throw new Error(apiErrorMessage(result, 'Failed to update event'));
       }
 
       onSaved('Event updated successfully');
@@ -583,7 +604,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to create owner');
+        throw new Error(apiErrorMessage(payload, 'Failed to create owner'));
       }
       setCreateForm({ name: '', avatarUrl: '' });
       onChanged('Owner created successfully');
@@ -615,7 +636,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to update owner');
+        throw new Error(apiErrorMessage(payload, 'Failed to update owner'));
       }
       setEditingId('');
       onChanged('Owner updated successfully');
@@ -637,7 +658,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to delete owner');
+        throw new Error(apiErrorMessage(payload, 'Failed to delete owner'));
       }
       onChanged('Owner deleted successfully');
     } catch (err) {
@@ -738,7 +759,7 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to create team');
+        throw new Error(apiErrorMessage(payload, 'Failed to create team'));
       }
       setCreateForm({ name: '', ownerId: owners[0]?.id || '', coinsLeft: 0 });
       onChanged('Team created successfully');
@@ -775,7 +796,7 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to update team');
+        throw new Error(apiErrorMessage(payload, 'Failed to update team'));
       }
       setEditingId('');
       onChanged('Team updated successfully');
@@ -796,7 +817,7 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to delete team');
+        throw new Error(apiErrorMessage(payload, 'Failed to delete team'));
       }
       onChanged('Team deleted successfully');
     } catch (err) {
@@ -917,7 +938,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to create player');
+        throw new Error(apiErrorMessage(payload, 'Failed to create player'));
       }
       setCreateForm({ name: '', role: '', rankPoint: 0, basePrice: 0, imageUrl: '' });
       onChanged('Player created successfully');
@@ -964,7 +985,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to update player');
+        throw new Error(apiErrorMessage(payload, 'Failed to update player'));
       }
       setEditingId('');
       onChanged('Player updated successfully');
@@ -985,7 +1006,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to delete player');
+        throw new Error(apiErrorMessage(payload, 'Failed to delete player'));
       }
       onChanged('Player deleted successfully');
     } catch (err) {
@@ -1075,10 +1096,11 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
   }, [players, createForm.playerId]);
 
   useEffect(() => {
-    if (!controlLotId && lots[0]?.id) {
-      setControlLotId(lots[0].id);
-      setControlAmount(Number(lots[0].currentBid || 0));
-      setControlOwnerId(lots[0].currentOwnerId || owners[0]?.id || '');
+    const preferredLot = lots.find((lot) => lot.status === 'ACTIVE') || lots[0];
+    if (!controlLotId && preferredLot?.id) {
+      setControlLotId(preferredLot.id);
+      setControlAmount(Number(preferredLot.currentBid || 0));
+      setControlOwnerId(preferredLot.currentOwnerId || owners[0]?.id || '');
     }
   }, [controlLotId, lots, owners]);
 
@@ -1091,6 +1113,24 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
     setControlAmount(Number(selected.currentBid || 0));
     setControlOwnerId(selected.currentOwnerId || owners[0]?.id || '');
   }, [controlLotId, lots, owners]);
+
+  const selectedLot = useMemo(
+    () => lots.find((lot) => lot.id === controlLotId) || null,
+    [lots, controlLotId]
+  );
+
+  const activeLot = useMemo(
+    () => lots.find((lot) => lot.status === 'ACTIVE') || null,
+    [lots]
+  );
+
+  const lotSummary = useMemo(() => ({
+    total: lots.length,
+    pending: lots.filter((lot) => lot.status === 'PENDING').length,
+    active: lots.filter((lot) => lot.status === 'ACTIVE').length,
+    sold: lots.filter((lot) => lot.status === 'SOLD').length,
+    unsold: lots.filter((lot) => lot.status === 'UNSOLD').length,
+  }), [lots]);
 
   const handleCreate = async () => {
     onError('');
@@ -1111,7 +1151,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to create auction lot');
+        throw new Error(apiErrorMessage(payload, 'Failed to create auction lot'));
       }
       setCreateForm({
         playerId: players[0]?.id || '',
@@ -1155,7 +1195,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to update auction lot');
+        throw new Error(apiErrorMessage(payload, 'Failed to update auction lot'));
       }
       setEditingId('');
       onChanged('Auction lot updated successfully');
@@ -1176,7 +1216,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Failed to delete auction lot');
+        throw new Error(apiErrorMessage(payload, 'Failed to delete auction lot'));
       }
       onChanged('Auction lot deleted successfully');
     } catch (err) {
@@ -1198,7 +1238,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Auction action failed');
+        throw new Error(apiErrorMessage(payload, 'Auction action failed'));
       }
       onChanged(successMessage);
     } catch (err) {
@@ -1242,7 +1282,7 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Finalize failed');
+        throw new Error(apiErrorMessage(payload, 'Finalize failed'));
       }
 
       onChanged('Lot finalized and sold successfully');
@@ -1253,139 +1293,240 @@ const LotsTab = ({ lots, players, owners, eventId, token, onError, onChanged }) 
     }
   };
 
+  const handleResetToPending = async () => {
+    if (!selectedLot) {
+      onError('Select a lot first');
+      return;
+    }
+
+    onError('');
+    setAuctionBusy(true);
+    try {
+      const response = await fetch(`${API_URL}/events/${eventId}/lot/${selectedLot.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          playerId: selectedLot.playerId,
+          status: 'PENDING',
+          endsAt: null,
+          lotOrder: Number(selectedLot.lotOrder),
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, 'Failed to reset selected lot'));
+      }
+
+      onChanged('Selected lot reset to pending state');
+    } catch (err) {
+      onError(err.message || 'Failed to reset selected lot');
+    } finally {
+      setAuctionBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="rounded border border-primary/30 bg-primary/5 p-4">
-        <p className="mb-3 text-xs font-bold tracking-[0.16em] text-primary uppercase">Auction Control Center</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-            Control Lot
-            <select
-              value={controlLotId}
-              onChange={(e) => setControlLotId(e.target.value)}
-              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-            >
-              {lots.map((lot) => (
-                <option key={lot.id} value={lot.id}>
-                  #{lot.lotOrder} - {lot.player?.name || lot.playerId}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="rounded border border-primary/35 bg-[linear-gradient(135deg,rgba(255,87,34,0.14),rgba(0,0,0,0.2))] p-4 md:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.22em] text-primary uppercase">Auction Command Center</p>
+            <h4 className="mt-1 font-display text-lg font-black uppercase text-white">Live Runtime Controls</h4>
+          </div>
+          <span className={`rounded border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] uppercase ${auctionBusy ? 'border-amber-300/60 bg-amber-300/15 text-amber-300' : 'border-green-400/40 bg-green-400/10 text-green-300'}`}>
+            {auctionBusy ? 'Processing' : 'Ready'}
+          </span>
+        </div>
 
-          <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-            Winning Owner
-            <select
-              value={controlOwnerId}
-              onChange={(e) => setControlOwnerId(e.target.value)}
-              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-            >
-              <option value="">Select owner</option>
-              {owners.map((owner) => (
-                <option key={owner.id} value={owner.id}>{owner.name}</option>
-              ))}
-            </select>
-          </label>
+        <div className="mt-4 grid gap-2 sm:grid-cols-5">
+          <div className="rounded border border-white/20 bg-black/45 px-3 py-2">
+            <p className="text-[9px] font-bold tracking-[0.14em] text-white/45 uppercase">Total Lots</p>
+            <p className="mt-1 font-display text-base font-black text-white">{lotSummary.total}</p>
+          </div>
+          <div className="rounded border border-sky-300/30 bg-sky-300/10 px-3 py-2">
+            <p className="text-[9px] font-bold tracking-[0.14em] text-sky-200/70 uppercase">Pending</p>
+            <p className="mt-1 font-display text-base font-black text-sky-200">{lotSummary.pending}</p>
+          </div>
+          <div className="rounded border border-primary/40 bg-primary/12 px-3 py-2">
+            <p className="text-[9px] font-bold tracking-[0.14em] text-primary/80 uppercase">Active</p>
+            <p className="mt-1 font-display text-base font-black text-primary">{lotSummary.active}</p>
+          </div>
+          <div className="rounded border border-green-400/35 bg-green-400/10 px-3 py-2">
+            <p className="text-[9px] font-bold tracking-[0.14em] text-green-300/80 uppercase">Sold</p>
+            <p className="mt-1 font-display text-base font-black text-green-300">{lotSummary.sold}</p>
+          </div>
+          <div className="rounded border border-yellow-300/35 bg-yellow-300/10 px-3 py-2">
+            <p className="text-[9px] font-bold tracking-[0.14em] text-yellow-300/85 uppercase">Unsold</p>
+            <p className="mt-1 font-display text-base font-black text-yellow-300">{lotSummary.unsold}</p>
+          </div>
+        </div>
 
-          <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-            Sold Amount
-            <input
-              type="number"
-              value={controlAmount}
-              onChange={(e) => setControlAmount(Number(e.target.value || 0))}
-              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-            />
-          </label>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+          <div className="space-y-3">
+            <div className="rounded border border-primary/30 bg-black/50 p-3">
+              <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Current Active Lot</p>
+              <p className="mt-1 text-sm font-bold text-white">
+                {activeLot ? `#${activeLot.lotOrder} - ${activeLot.player?.name || activeLot.playerId}` : 'No active lot'}
+              </p>
+              <p className="mt-1 text-xs text-white/65">
+                {activeLot ? `Bid: ${activeLot.currentBid || 0} | Time Left: ${activeLot.timeLeft || 0}s` : 'Start auction or activate a lot to begin.'}
+              </p>
+            </div>
 
-          <label className="flex items-center gap-2 pt-6 text-xs font-bold uppercase text-white/80">
-            <input
-              type="checkbox"
-              checked={autoProgress}
-              onChange={(e) => setAutoProgress(e.target.checked)}
-              className="h-4 w-4"
-            />
-            Auto Progress
-          </label>
+            <div className="rounded border border-white/20 bg-black/50 p-3">
+              <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Selected Lot</p>
+              <p className="mt-1 text-sm font-bold text-white">
+                {selectedLot ? `#${selectedLot.lotOrder} - ${selectedLot.player?.name || selectedLot.playerId}` : 'No lot selected'}
+              </p>
+              <p className="mt-1 text-xs text-white/65">
+                {selectedLot
+                  ? `Status: ${selectedLot.status} | Highest: ${selectedLot.currentBid || 0} | Owner: ${selectedLot.currentOwnerName || 'None'}`
+                  : 'Choose a lot from the selector to control it.'}
+              </p>
+            </div>
+          </div>
 
+          <div className="rounded border border-white/20 bg-black/55 p-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+                Control Lot
+                <select
+                  value={controlLotId}
+                  onChange={(e) => setControlLotId(e.target.value)}
+                  className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+                >
+                  {lots.map((lot) => (
+                    <option key={lot.id} value={lot.id}>
+                      #{lot.lotOrder} - {lot.player?.name || lot.playerId}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+                Winning Owner
+                <select
+                  value={controlOwnerId}
+                  onChange={(e) => setControlOwnerId(e.target.value)}
+                  className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+                >
+                  <option value="">Select owner</option>
+                  {owners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>{owner.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+                Final Amount
+                <input
+                  type="number"
+                  value={controlAmount}
+                  onChange={(e) => setControlAmount(Number(e.target.value || 0))}
+                  className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 pt-1 text-[10px] font-bold tracking-[0.14em] text-white/75 uppercase">
+                <input
+                  type="checkbox"
+                  checked={autoProgress}
+                  onChange={(e) => setAutoProgress(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Auto Progress
+              </label>
+            </div>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
+              <button
+                type="button"
+                disabled={auctionBusy}
+                onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started')}
+                className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
+              >
+                Start
+              </button>
+              <button
+                type="button"
+                disabled={auctionBusy}
+                onClick={() => callAuctionControl('/stop', {}, 'Auction stopped')}
+                className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
+              >
+                Stop
+              </button>
+              <button
+                type="button"
+                disabled={auctionBusy}
+                onClick={() => callAuctionControl('/next-lot', {}, 'Moved to next lot')}
+                className="h-10 rounded border border-amber-300/50 bg-amber-300/10 px-3 text-xs font-bold uppercase text-amber-300 disabled:opacity-50"
+              >
+                Next Lot
+              </button>
+              <button
+                type="button"
+                disabled={auctionBusy || !controlLotId}
+                onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'ACTIVE' }, 'Selected lot activated')}
+                className="h-10 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-bold uppercase text-primary disabled:opacity-50"
+              >
+                Activate Lot
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
           <button
             type="button"
-            disabled={auctionBusy}
+            disabled={auctionBusy || !controlLotId || !controlOwnerId || Number(controlAmount || 0) <= 0}
             onClick={handleFinalizeSold}
-            className="h-10 self-end rounded border border-green-500/50 bg-green-500/10 px-3 text-xs font-bold uppercase text-green-300 disabled:opacity-50"
+            className="h-10 rounded border border-green-500/60 bg-green-500/15 px-3 text-[11px] font-bold uppercase text-green-300 disabled:opacity-50"
           >
             Finalize Sold
           </button>
+          <button
+            type="button"
+            disabled={auctionBusy || !controlLotId}
+            onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'SOLD' }, 'Selected lot marked sold')}
+            className="h-10 rounded border border-emerald-400/45 bg-emerald-400/10 px-3 text-[11px] font-bold uppercase text-emerald-300 disabled:opacity-50"
+          >
+            Force Sold
+          </button>
+          <button
+            type="button"
+            disabled={auctionBusy || !controlLotId}
+            onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'UNSOLD' }, 'Selected lot marked unsold')}
+            className="h-10 rounded border border-yellow-500/55 bg-yellow-500/10 px-3 text-[11px] font-bold uppercase text-yellow-300 disabled:opacity-50"
+          >
+            Mark Unsold
+          </button>
+          <button
+            type="button"
+            disabled={auctionBusy || !selectedLot}
+            onClick={handleResetToPending}
+            className="h-10 rounded border border-sky-400/45 bg-sky-400/10 px-3 text-[11px] font-bold uppercase text-sky-300 disabled:opacity-50"
+          >
+            Reset Pending
+          </button>
+          <button
+            type="button"
+            disabled={auctionBusy || !controlLotId}
+            onClick={() => {
+              setEditingId(controlLotId);
+              const selected = lots.find((lot) => lot.id === controlLotId);
+              if (selected) {
+                startEdit(selected);
+              }
+            }}
+            className="h-10 rounded border border-white/30 bg-black/60 px-3 text-[11px] font-bold uppercase text-white disabled:opacity-50"
+          >
+            Open Row Editor
+          </button>
         </div>
-      </div>
-
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-4">
-        <button
-          type="button"
-          disabled={auctionBusy}
-          onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started')}
-          className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
-        >
-          Start Auction
-        </button>
-        <button
-          type="button"
-          disabled={auctionBusy}
-          onClick={() => callAuctionControl('/stop', {}, 'Auction stopped')}
-          className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
-        >
-          Stop Auction
-        </button>
-        <button
-          type="button"
-          disabled={auctionBusy}
-          onClick={() => callAuctionControl('/next-lot', {}, 'Moved to next lot')}
-          className="h-10 rounded border border-amber-300/50 bg-amber-300/10 px-3 text-xs font-bold uppercase text-amber-300 disabled:opacity-50"
-        >
-          Next Lot
-        </button>
-        <button
-          type="button"
-          disabled={auctionBusy || !controlLotId}
-          onClick={() => {
-            callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'ACTIVE' }, 'Selected lot activated');
-          }}
-          className="h-10 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-bold uppercase text-primary disabled:opacity-50"
-        >
-          Activate Selected
-        </button>
-      </div>
-
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-3">
-        <button
-          type="button"
-          disabled={auctionBusy || !controlLotId}
-          onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'UNSOLD' }, 'Selected lot marked unsold')}
-          className="h-10 rounded border border-yellow-500/50 bg-yellow-500/10 px-3 text-xs font-bold uppercase text-yellow-300 disabled:opacity-50"
-        >
-          Mark Unsold
-        </button>
-        <button
-          type="button"
-          disabled={auctionBusy || !controlLotId || !controlOwnerId}
-          onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'SOLD' }, 'Selected lot set sold')}
-          className="h-10 rounded border border-green-500/50 bg-green-500/10 px-3 text-xs font-bold uppercase text-green-300 disabled:opacity-50"
-        >
-          Mark Sold
-        </button>
-        <button
-          type="button"
-          disabled={auctionBusy || !controlLotId}
-          onClick={() => {
-            setEditingId(controlLotId);
-            const selected = lots.find((lot) => lot.id === controlLotId);
-            if (selected) {
-              startEdit(selected);
-            }
-          }}
-          className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
-        >
-          Open in Row Editor
-        </button>
       </div>
 
       <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-5">
@@ -1493,7 +1634,7 @@ const BulkUploadModal = ({ eventId, token, initialType, onClose, onSuccess, onEr
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.message || 'Bulk upload failed');
+        throw new Error(apiErrorMessage(payload, 'Bulk upload failed'));
       }
 
       onSuccess(`Bulk ${uploadType} upload completed`);
@@ -1611,7 +1752,7 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to create event');
+        throw new Error(apiErrorMessage(result, 'Failed to create event'));
       }
 
       onSuccess(result.data?.id);

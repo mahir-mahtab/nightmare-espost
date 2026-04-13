@@ -60,13 +60,13 @@ export const eventsController = {
 
       // Validate owner role requires ownerId
       if (role === 'owner' && !ownerId) {
-        throw new AppError('Owner role requires ownerId', 400);
+        throw new AppError('Please choose an owner profile before logging in as owner.', 400, 'OWNER_ID_REQUIRED');
       }
 
       // Verify event password and get event
       const isValid = await eventService.verifyEventPassword(eventId, password);
       if (!isValid) {
-        throw new AppError('Invalid event password', 401);
+        throw new AppError('The event password is incorrect.', 401, 'EVENT_PASSWORD_INVALID');
       }
 
       // Get the actual event to use its ID
@@ -77,7 +77,7 @@ export const eventsController = {
         const owners = await eventService.getOwners(event.id);
         const ownerExists = owners.some((o: any) => o.id === ownerId);
         if (!ownerExists) {
-          throw new AppError('Invalid owner ID', 400);
+          throw new AppError('Selected owner does not belong to this event.', 400, 'OWNER_NOT_IN_EVENT');
         }
       }
 

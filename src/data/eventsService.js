@@ -15,6 +15,23 @@ const toAuctionStatusLabel = (status) => {
   return String(status).toLowerCase();
 };
 
+const formatApiError = (payload, fallbackMessage) => {
+  const baseMessage = payload?.message || fallbackMessage;
+
+  if (Array.isArray(payload?.details) && payload.details.length > 0) {
+    const first = payload.details[0];
+    if (first?.path && first?.message) {
+      return `${baseMessage} (${first.path}: ${first.message})`;
+    }
+  }
+
+  if (payload?.code) {
+    return `${baseMessage} [${payload.code}]`;
+  }
+
+  return baseMessage;
+};
+
 const request = async (path, { method = 'GET', body, token } = {}) => {
   const response = await fetch(`${config.apiUrl}${path}`, {
     method,
@@ -27,7 +44,7 @@ const request = async (path, { method = 'GET', body, token } = {}) => {
 
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.message || 'Request failed');
+    throw new Error(formatApiError(payload, 'Request failed'));
   }
 
   return payload.data;

@@ -10,14 +10,14 @@ export const requireAdmin = (
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next(new AppError('Admin authentication required', 401));
+    return next(new AppError('Admin authentication token is required.', 401, 'ADMIN_AUTH_REQUIRED'));
   }
 
   const token = authHeader.substring(7);
   const payload = authService.verifyAdminToken(token);
 
   if (!payload) {
-    return next(new AppError('Invalid or expired admin token', 401));
+    return next(new AppError('Admin session is invalid or has expired. Please sign in again.', 401, 'ADMIN_TOKEN_INVALID'));
   }
 
   // Attach admin info to request

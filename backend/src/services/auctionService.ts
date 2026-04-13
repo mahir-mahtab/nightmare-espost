@@ -65,7 +65,7 @@ const withLock = async <T>(eventId: string, task: () => Promise<T>) => {
   const key = redisKey.lock(eventId);
   const acquired = await redis.set(key, '1', 'PX', 3000, 'NX');
   if (!acquired) {
-    throw new AppError('Auction action in progress, retry', 409);
+    throw new AppError('Another auction action is currently being processed. Please retry in a moment.', 409, 'AUCTION_LOCKED');
   }
 
   try {
@@ -191,16 +191,16 @@ export const auctionService = {
       const now = Date.now();
 
       if (runtime.activeLotEndsAt && runtime.activeLotEndsAt <= now) {
-        throw new AppError('Bidding window closed for this lot', 400);
+        throw new AppError('Bidding window is already closed for this lot.', 400, 'BID_WINDOW_CLOSED');
       }
 
       if (!runtime.isRunning) {
-        throw new AppError('Auction is not running', 400);
+        throw new AppError('Auction is currently stopped. Start auction before placing bids.', 400, 'AUCTION_NOT_RUNNING');
       }
 
       const targetLotId = lotId || runtime.activeLotId;
       if (!targetLotId || runtime.activeLotId !== targetLotId) {
-        throw new AppError('No active lot found', 400);
+        throw new AppError('Bid can only be placed on the currently active lot.', 400, 'ACTIVE_LOT_REQUIRED');
       }
 
       const lot = await prisma.auctionLot.findFirst({
@@ -211,20 +211,20 @@ export const auctionService = {
       });
 
       if (!lot) {
-        throw new AppError('Auction lot not found', 404);
+        throw new AppError('Auction lot was not found for this event.', 404, 'AUCTION_LOT_NOT_FOUND');
       }
 
       if (lot.status !== AuctionStatus.ACTIVE) {
-        throw new AppError('Lot is not active for bidding', 400);
+        throw new AppError('Selected lot is not active for bidding.', 400, 'LOT_NOT_ACTIVE');
       }
 
       if (!runtime.activeLotEndsAt || runtime.activeLotEndsAt <= Date.now()) {
-        throw new AppError('Bidding window closed for this lot', 400);
+        throw new AppError('Bidding window is already closed for this lot.', 400, 'BID_WINDOW_CLOSED');
       }
 
       const currentBid = runtime.liveBids[lot.id]?.amount ?? lot.player.basePrice;
       if (amount <= currentBid) {
-        throw new AppError('Bid must be greater than current bid', 400);
+        throw new AppError('Bid amount must be greater than the current bid.', 400, 'BID_TOO_LOW');
       }
 
       const owner = await prisma.owner.findFirst({
@@ -232,7 +232,7 @@ export const auctionService = {
       });
 
       if (!owner) {
-        throw new AppError('Owner not found in this event', 404);
+        throw new AppError('Owner was not found in this event.', 404, 'OWNER_NOT_FOUND');
       }
 
       const team = await prisma.team.findFirst({
@@ -240,11 +240,11 @@ export const auctionService = {
       });
 
       if (!team) {
-        throw new AppError('Owner has no team in this event', 400);
+        throw new AppError('Selected owner does not have a team in this event.', 400, 'OWNER_TEAM_NOT_FOUND');
       }
 
       if (team.coinsLeft < amount) {
-        throw new AppError('Insufficient coins for this bid', 400);
+        throw new AppError('Team does not have enough coins for this bid.', 400, 'INSUFFICIENT_COINS');
       }
 
       runtime.liveBids[lot.id] = {
@@ -292,7 +292,7 @@ export const auctionService = {
     });
 
     if (!lot) {
-      throw new AppError('Auction lot not found', 404);
+      throw new AppError('Auction lot was not found for this event.', 404, 'AUCTION_LOT_NOT_FOUND');
     }
 
     if (lot.status === AuctionStatus.SOLD || lot.status === AuctionStatus.UNSOLD) {
@@ -309,7 +309,7 @@ export const auctionService = {
     const finalStatus = options.forcedStatus || (finalOwnerId ? 'SOLD' : 'UNSOLD');
 
     if (finalStatus === 'SOLD' && !finalOwnerId) {
-      throw new AppError('Cannot settle SOLD without a winning owner', 400);
+      throw new AppError('Cannot mark lot as sold without a winning owner.', 400, 'WINNING_OWNER_REQUIRED');
     }
 
     let winningTeamId: string | null = null;
@@ -320,11 +320,11 @@ export const auctionService = {
       });
 
       if (!team) {
-        throw new AppError('Winning owner team not found', 400);
+        throw new AppError('Winning owner does not have a team in this event.', 400, 'WINNING_TEAM_NOT_FOUND');
       }
 
       if (team.coinsLeft < finalAmount) {
-        throw new AppError('Winning team has insufficient coins', 400);
+        throw new AppError('Winning team does not have enough coins for this purchase.', 400, 'WINNING_TEAM_INSUFFICIENT_COINS');
       }
 
       winningTeamId = team.id;
@@ -393,7 +393,7 @@ export const auctionService = {
       });
 
       if (!lot) {
-        throw new AppError('Auction lot not found', 404);
+        throw new AppError('Auction lot was not found for this event.', 404, 'AUCTION_LOT_NOT_FOUND');
       }
 
       if (status === 'ACTIVE') {
@@ -496,7 +496,7 @@ export const auctionService = {
 
       const lotToActivate = activeLot || firstPendingLot;
       if (!lotToActivate) {
-        throw new AppError('No lot available to start auction', 400);
+        throw new AppError('No pending lot is available to start the auction.', 400, 'NO_LOT_TO_START');
       }
 
       const endsAtMs = Date.now() + (event.auctionWindowSeconds * 1000);
@@ -551,7 +551,7 @@ export const auctionService = {
   async _progressToNextLot(event: { id: string; auctionWindowSeconds: number }, runtime: AuctionRuntimeState) {
     const currentLotId = runtime.activeLotId;
     if (!currentLotId) {
-      throw new AppError('No active lot to progress from', 400);
+      throw new AppError('There is no active lot to progress from.', 400, 'NO_ACTIVE_LOT');
     }
 
     const current = await prisma.auctionLot.findFirst({
@@ -559,7 +559,7 @@ export const auctionService = {
     });
 
     if (!current) {
-      throw new AppError('Current active lot not found', 404);
+      throw new AppError('Current active lot was not found in database.', 404, 'ACTIVE_LOT_NOT_FOUND');
     }
 
     if (current.status === AuctionStatus.ACTIVE) {
@@ -618,7 +618,7 @@ export const auctionService = {
       });
 
       if (!lot) {
-        throw new AppError('Auction lot not found', 404);
+        throw new AppError('Auction lot was not found for this event.', 404, 'AUCTION_LOT_NOT_FOUND');
       }
 
       if (status === 'ACTIVE') {

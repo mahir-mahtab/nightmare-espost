@@ -1,6 +1,9 @@
 import { prisma } from '../config/database.js';
+import { redis } from '../config/redis.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { EventStatus, PlayerStatus, AuctionStatus } from '@prisma/client';
+
+const runtimeRedisKey = (eventId: string) => `auction:${eventId}:state`;
 
 export const eventService = {
   // Create event
@@ -10,7 +13,7 @@ export const eventService = {
     });
 
     if (existingEvent) {
-      throw new AppError('Event with this slug already exists', 400);
+      throw new AppError('Event slug already exists. Please use a different slug.', 409, 'EVENT_SLUG_CONFLICT');
     }
 
     return await prisma.event.create({
@@ -71,7 +74,7 @@ export const eventService = {
     });
 
     if (!event) {
-      throw new AppError('Event not found', 404);
+      throw new AppError('Event not found for the provided ID or slug.', 404, 'EVENT_NOT_FOUND');
     }
 
     return event;
@@ -84,7 +87,7 @@ export const eventService = {
     });
 
     if (!event) {
-      throw new AppError('Event not found', 404);
+      throw new AppError('Event not found for the provided ID.', 404, 'EVENT_NOT_FOUND');
     }
 
     return event;
@@ -124,7 +127,15 @@ export const eventService = {
         },
         auctionLots: {
           include: {
-            player: true,
+            player: {
+              include: {
+                soldToTeam: {
+                  include: {
+                    owner: true,
+                  },
+                },
+              },
+            },
           },
           orderBy: { lotOrder: 'asc' },
         },
@@ -132,10 +143,82 @@ export const eventService = {
     });
 
     if (!event) {
-      throw new AppError('Event not found', 404);
+      throw new AppError('Event not found for admin workspace.', 404, 'EVENT_NOT_FOUND');
     }
 
-    return event;
+    let runtimeState: any = null;
+    try {
+      const rawState = await redis.get(runtimeRedisKey(event.id));
+      if (rawState) {
+        runtimeState = JSON.parse(rawState);
+      }
+    } catch {
+      runtimeState = null;
+    }
+
+    const liveBids = runtimeState?.liveBids && typeof runtimeState.liveBids === 'object'
+      ? runtimeState.liveBids
+      : {};
+
+    const liveOwnerIds = Object.values(liveBids)
+      .map((bid: any) => bid?.ownerId)
+      .filter((ownerId: any) => typeof ownerId === 'string');
+
+    const liveOwners = liveOwnerIds.length
+      ? await prisma.owner.findMany({
+        where: { eventId: event.id, id: { in: liveOwnerIds as string[] } },
+        select: { id: true, name: true },
+      })
+      : [];
+
+    const ownerNameById = Object.fromEntries(liveOwners.map((owner) => [owner.id, owner.name]));
+
+    const activeLotEndsAt = runtimeState?.activeLotEndsAt ? Number(runtimeState.activeLotEndsAt) : null;
+    const now = Date.now();
+
+    const auctionLots = (event.auctionLots || []).map((lot: any) => {
+      const liveBid = liveBids[lot.id];
+      const soldOwnerName = lot.player?.soldToTeam?.owner?.name || null;
+      const soldOwnerId = lot.player?.soldToTeam?.ownerId || null;
+
+      const liveCurrentBid = typeof liveBid?.amount === 'number' ? liveBid.amount : null;
+      const liveCurrentOwnerId = typeof liveBid?.ownerId === 'string' ? liveBid.ownerId : null;
+      const liveCurrentOwnerName = liveCurrentOwnerId ? ownerNameById[liveCurrentOwnerId] || null : null;
+
+      const computedBid = lot.status === AuctionStatus.SOLD
+        ? (lot.player?.finalPrice ?? lot.player?.basePrice ?? 0)
+        : (liveCurrentBid ?? lot.player?.basePrice ?? 0);
+
+      const computedOwnerId = lot.status === AuctionStatus.SOLD
+        ? soldOwnerId
+        : liveCurrentOwnerId;
+
+      const computedOwnerName = lot.status === AuctionStatus.SOLD
+        ? soldOwnerName
+        : liveCurrentOwnerName;
+
+      const effectiveEndsAt = runtimeState?.activeLotId === lot.id && activeLotEndsAt
+        ? new Date(activeLotEndsAt).toISOString()
+        : lot.endsAt;
+
+      const computedTimeLeft = effectiveEndsAt
+        ? Math.max(0, Math.ceil((new Date(effectiveEndsAt).getTime() - now) / 1000))
+        : 0;
+
+      return {
+        ...lot,
+        currentBid: computedBid,
+        currentOwnerId: computedOwnerId,
+        currentOwnerName: computedOwnerName,
+        timeLeft: computedTimeLeft,
+        endsAt: effectiveEndsAt,
+      };
+    });
+
+    return {
+      ...event,
+      auctionLots,
+    };
   },
 
   // Get event by slug
@@ -145,7 +228,7 @@ export const eventService = {
     });
 
     if (!event) {
-      throw new AppError('Event not found', 404);
+      throw new AppError('Event not found for the provided slug.', 404, 'EVENT_NOT_FOUND');
     }
 
     return event;
@@ -283,7 +366,7 @@ export const eventService = {
     });
 
     if (!team) {
-      throw new AppError('Team not found', 404);
+      throw new AppError('Team not found in this event.', 404, 'TEAM_NOT_FOUND');
     }
 
     return team;
@@ -326,7 +409,7 @@ export const eventService = {
     });
 
     if (!owner) {
-      throw new AppError('Owner not found', 404);
+      throw new AppError('Owner not found in this event.', 404, 'OWNER_NOT_FOUND');
     }
 
     return owner;
@@ -387,7 +470,7 @@ export const eventService = {
     });
 
     if (!player) {
-      throw new AppError('Player not found', 404);
+      throw new AppError('Player not found in this event.', 404, 'PLAYER_NOT_FOUND');
     }
 
     return player;
@@ -468,7 +551,7 @@ export const eventService = {
     });
 
     if (existingOrder) {
-      throw new AppError('Lot order already exists for this event', 400);
+      throw new AppError('Lot order already exists in this event. Choose a different order number.', 409, 'LOT_ORDER_CONFLICT');
     }
 
     return await prisma.auctionLot.create({
@@ -488,7 +571,7 @@ export const eventService = {
     });
 
     if (!lot) {
-      throw new AppError('Auction lot not found', 404);
+      throw new AppError('Auction lot not found in this event.', 404, 'AUCTION_LOT_NOT_FOUND');
     }
 
     return lot;
@@ -511,7 +594,7 @@ export const eventService = {
       });
 
       if (existingOrder) {
-        throw new AppError('Lot order already exists for this event', 400);
+        throw new AppError('Lot order already exists in this event. Choose a different order number.', 409, 'LOT_ORDER_CONFLICT');
       }
     }
 

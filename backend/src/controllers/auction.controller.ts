@@ -31,15 +31,15 @@ export const auctionController = {
 
       const ownerId = body.ownerId || session?.ownerId;
       if (!ownerId) {
-        throw new AppError('Owner ID required to place bid', 400);
+        throw new AppError('Owner identity is required to place a bid.', 400, 'OWNER_ID_REQUIRED_FOR_BID');
       }
 
       if (session?.role !== 'owner') {
-        throw new AppError('Owner role required for bidding', 403);
+        throw new AppError('Only owner sessions are allowed to place bids.', 403, 'OWNER_ROLE_REQUIRED_FOR_BID');
       }
 
       if (session?.ownerId && session.ownerId !== ownerId) {
-        throw new AppError('Owner mismatch for bid request', 403);
+        throw new AppError('Bid request owner does not match your signed-in owner session.', 403, 'OWNER_SESSION_MISMATCH');
       }
 
       const bidResult = await auctionService.placeBid(eventId, ownerId, body.amount, body.lotId);
@@ -98,7 +98,7 @@ export const auctionController = {
       const ownerId = body.ownerId || (req as any).session?.ownerId;
 
       if (!ownerId) {
-        throw new AppError('Owner ID required', 400);
+        throw new AppError('Winning owner is required to finalize a sold lot.', 400, 'FINALIZE_OWNER_REQUIRED');
       }
 
       const result = await auctionService.finalizePurchase(eventId, lotId, ownerId, body.amount);
