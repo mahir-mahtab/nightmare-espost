@@ -443,6 +443,41 @@ const BidMeta = ({ label, value }) => (
   </div>
 );
 
+const SoldAnnouncementPopup = ({ data, onClose }) => {
+  if (!data) {
+    return null;
+  }
+
+  return (
+    <Motion.div
+      initial={{ opacity: 0, y: -16, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -16, scale: 0.96 }}
+      className="fixed top-4 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2"
+    >
+      <div className="rounded-xl border border-emerald-400/45 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(0,0,0,0.78))] p-4 shadow-[0_16px_36px_rgba(0,0,0,0.5)] backdrop-blur">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-emerald-300 uppercase">Player Sold</p>
+            <p className="mt-1 font-display text-lg font-black uppercase text-white">{data.playerName}</p>
+            <p className="mt-1 text-sm text-white/90">Sold to <span className="font-bold text-emerald-300">{data.ownerName}</span></p>
+            <p className="mt-1 text-xs font-bold tracking-[0.14em] text-white/70 uppercase">Final Bid: {data.amount}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-white/30 bg-black/35 px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-white/80 uppercase hover:bg-black/60"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </Motion.div>
+  );
+};
+
+const normalizeLotStatus = (status) => String(status || 'pending').toLowerCase();
+
 const computeSecondsLeft = (endsAt) => {
   if (!endsAt) {
     return 0;
@@ -489,6 +524,7 @@ const EventsPage = () => {
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [bidAmount, setBidAmount] = useState('');
   const [socketConnected, setSocketConnected] = useState(false);
+  const [soldAnnouncement, setSoldAnnouncement] = useState(null);
 
   useEffect(() => {
     if (!tabIds.includes(activeTab) && eventId) {
@@ -730,9 +766,23 @@ const EventsPage = () => {
         return;
       }
 
+      const incomingStatus = normalizeLotStatus(lot.status);
+
       setAuction((prev) => {
         if (!prev) {
           return prev;
+        }
+
+        const previousLot = (prev.lots || []).find((item) => item.id === lot.id) || null;
+        const previousStatus = normalizeLotStatus(previousLot?.status);
+
+        if (incomingStatus === 'sold' && previousStatus !== 'sold') {
+          setSoldAnnouncement({
+            lotId: lot.id,
+            playerName: lot.playerName || previousLot?.playerName || 'Player',
+            ownerName: lot.currentOwnerName || previousLot?.currentOwnerName || 'Unknown owner',
+            amount: Number(lot.currentBid ?? previousLot?.currentBid ?? 0),
+          });
         }
 
         return {
@@ -799,6 +849,18 @@ const EventsPage = () => {
     const timeout = setTimeout(() => setError(''), 2500);
     return () => clearTimeout(timeout);
   }, [error]);
+
+  useEffect(() => {
+    if (!soldAnnouncement) {
+      return undefined;
+    }
+
+    const timeout = setTimeout(() => {
+      setSoldAnnouncement(null);
+    }, 4500);
+
+    return () => clearTimeout(timeout);
+  }, [soldAnnouncement]);
 
   const playerById = useMemo(
     () => Object.fromEntries(allPlayers.map((player) => [player.id, player])),
@@ -1148,6 +1210,15 @@ const EventsPage = () => {
           </AnimatePresence>
         </div>
       </section>
+
+      <AnimatePresence>
+        {soldAnnouncement && (
+          <SoldAnnouncementPopup
+            data={soldAnnouncement}
+            onClose={() => setSoldAnnouncement(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Toast Notifications - Enhanced */}
       <AnimatePresence>
