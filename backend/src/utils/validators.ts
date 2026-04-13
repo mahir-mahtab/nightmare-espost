@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+const personNameRegex = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
+const teamNameRegex = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
+const playerRoleRegex = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
+
 // Event validation schemas
 export const createEventSchema = z.object({
   slug: z.string().min(3).max(100).regex(/^[a-z0-9-]+$/),
@@ -84,6 +88,24 @@ export const eventLoginSchema = z.object({
   role: z.enum(['owner', 'guest']),
   ownerId: z.string().uuid().optional(),
   ownerPassword: z.string().min(4).max(100).optional(),
+});
+
+export const ownerSignupSchema = z.object({
+  eventPassword: z.string().min(4).max(50),
+  ownerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Owner name format is invalid'),
+  ownerPassword: z.string().trim().min(6).max(100),
+  avatarUrl: z.string().trim().url().optional(),
+  teamName: z.string().trim().min(2).max(100).regex(teamNameRegex, 'Team name format is invalid'),
+  coinsLeft: z.number().int().min(0).max(100000).default(0),
+});
+
+export const playerSignupSchema = z.object({
+  eventPassword: z.string().min(4).max(50),
+  playerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Player name format is invalid'),
+  playerRole: z.string().trim().min(2).max(40).regex(playerRoleRegex, 'Player role format is invalid'),
+  rankPoint: z.number().int().min(0).max(100).default(0),
+  basePrice: z.number().int().min(0).max(100000).default(0),
+  imageUrl: z.string().trim().url().optional(),
 });
 
 // Auction schemas

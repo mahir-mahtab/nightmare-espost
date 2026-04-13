@@ -6,9 +6,12 @@ const router: Router = Router();
 
 router.get('/', eventsController.listPublicEvents);
 router.get('/:eventId/login-context', eventsController.getLoginContext);
+router.get('/:eventId/signup-context', eventsController.getSignupContext);
 
 // Auth routes (public)
 router.post('/:eventId/auth/login', eventsController.login);
+router.post('/:eventId/signup/owner', eventsController.signupOwner);
+router.post('/:eventId/signup/player', eventsController.signupPlayer);
 
 // Protected routes (require event session)
 router.post('/:eventId/auth/validate', requireEventAuth, eventsController.validateSession);

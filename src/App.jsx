@@ -5,6 +5,7 @@ import AchievementsPage from './pages/AchievementsPage.jsx';
 import EventsPage from './pages/EventsPage.jsx';
 import EventsHubPage from './pages/EventsHubPage.jsx';
 import EventLoginPage from './pages/EventLoginPage.jsx';
+import EventSignupPage from './pages/EventSignupPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
@@ -20,6 +21,7 @@ function App() {
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/events" element={<EventsHubPage />} />
         <Route path="/events/login/:eventId" element={<EventLoginPage />} />
+        <Route path="/signup/:eventId/:type" element={<EventSignupPage />} />
         <Route path="/events/:eventId" element={<Navigate to="auction" replace />} />
         <Route
           path="/events/:eventId/:tab"

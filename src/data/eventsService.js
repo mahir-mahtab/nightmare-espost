@@ -124,6 +124,24 @@ export const eventsService = {
     return await request(`/events/${eventId}/login-context`);
   },
 
+  async getSignupContext(eventId) {
+    return await request(`/events/${eventId}/signup-context`);
+  },
+
+  async signupOwner(eventId, payload) {
+    return await request(`/events/${eventId}/signup/owner`, {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  async signupPlayer(eventId, payload) {
+    return await request(`/events/${eventId}/signup/player`, {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
   async getEventSummary(eventId, sessionToken) {
     const data = await request(`/events/${eventId}/summary`, {
       token: sessionToken,
