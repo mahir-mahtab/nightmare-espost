@@ -29,10 +29,15 @@ export const updateTeamSchema = createTeamSchema.partial();
 // Owner validation schemas
 export const createOwnerSchema = z.object({
   name: z.string().min(2).max(255),
+  password: z.string().min(4).max(100),
   avatarUrl: z.string().url().optional(),
 });
 
-export const updateOwnerSchema = createOwnerSchema.partial();
+export const updateOwnerSchema = z.object({
+  name: z.string().min(2).max(255).optional(),
+  password: z.string().min(4).max(100).optional(),
+  avatarUrl: z.string().url().optional(),
+});
 
 // Player validation schemas
 export const createPlayerSchema = z.object({
@@ -76,9 +81,9 @@ export const adminLoginSchema = z.object({
 
 export const eventLoginSchema = z.object({
   password: z.string().min(4),
-  displayName: z.string().min(2).max(100),
-  role: z.enum(['owner', 'viewer']),
+  role: z.enum(['owner', 'guest']),
   ownerId: z.string().uuid().optional(),
+  ownerPassword: z.string().min(4).max(100).optional(),
 });
 
 // Auction schemas

@@ -65,6 +65,7 @@ model Owner {
   eventId    String   @map("event_id")
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name       String
+  passwordHash String? @map("password_hash")
   avatarUrl  String?  @map("avatar_url")
   createdAt  DateTime @default(now()) @map("created_at")
 

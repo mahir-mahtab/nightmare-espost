@@ -54,8 +54,8 @@ async function setupTestEvent() {
   
   // Create owners
   const ownersData = [
-    { name: 'Team Alpha Owner', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
-    { name: 'Team Beta Owner', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
+    { name: 'Team Alpha Owner', password: 'owner-alpha-123', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
+    { name: 'Team Beta Owner', password: 'owner-beta-123', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
   ];
   
   const ownersResponse = await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/owners`, {
@@ -110,8 +110,7 @@ async function setupTestEvent() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       password: 'test123',
-      displayName: 'Test Viewer',
-      role: 'viewer',
+      role: 'guest',
     }),
   });
   

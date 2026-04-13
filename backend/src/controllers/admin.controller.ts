@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import { authService } from '../services/authService.js';
 import { eventService } from '../services/eventService.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -164,7 +165,12 @@ export const adminController = {
     try {
       const { eventId } = req.params;
       const ownerData = createOwnerSchema.parse(req.body);
-      const [owner] = await eventService.createOwners(eventId, [ownerData]);
+      const passwordHash = await bcrypt.hash(ownerData.password, 10);
+      const [owner] = await eventService.createOwners(eventId, [{
+        name: ownerData.name,
+        avatarUrl: ownerData.avatarUrl,
+        passwordHash,
+      }]);
 
       res.status(201).json({
         success: true,
@@ -180,7 +186,16 @@ export const adminController = {
     try {
       const { eventId, ownerId } = req.params;
       const ownerData = updateOwnerSchema.parse(req.body);
-      const owner = await eventService.updateOwner(eventId, ownerId, ownerData);
+      const payload: any = {
+        ...(ownerData.name !== undefined ? { name: ownerData.name } : {}),
+        ...(ownerData.avatarUrl !== undefined ? { avatarUrl: ownerData.avatarUrl } : {}),
+      };
+
+      if (ownerData.password !== undefined) {
+        payload.passwordHash = await bcrypt.hash(ownerData.password, 10);
+      }
+
+      const owner = await eventService.updateOwner(eventId, ownerId, payload);
 
       res.json({
         success: true,
@@ -364,7 +379,15 @@ export const adminController = {
         owners = bulkOwnersSchema.parse(req.body);
       }
       
-      const createdOwners = await eventService.createOwners(eventId, owners);
+      const ownersWithHashes = await Promise.all(
+        owners.map(async (owner) => ({
+          name: owner.name,
+          avatarUrl: owner.avatarUrl,
+          passwordHash: await bcrypt.hash(owner.password, 10),
+        })),
+      );
+
+      const createdOwners = await eventService.createOwners(eventId, ownersWithHashes);
 
       res.status(201).json({
         success: true,

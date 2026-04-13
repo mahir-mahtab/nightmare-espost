@@ -8,7 +8,15 @@ const parseSession = (value) => {
   }
 
   try {
-    return JSON.parse(value);
+    const parsed = JSON.parse(value);
+    if (!parsed) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      role: parsed.role === 'viewer' ? 'guest' : parsed.role,
+    };
   } catch {
     return null;
   }
@@ -82,7 +90,7 @@ export const eventAuthService = {
     return Boolean(this.getSession(eventId));
   },
 
-  async login({ eventId, password, displayName, role, ownerId = '' }) {
+  async login({ eventId, password, role, ownerId = '', ownerPassword = '' }) {
     if (!eventId) {
       throw new Error('Event ID is required');
     }
@@ -91,11 +99,7 @@ export const eventAuthService = {
       throw new Error('Event password is required');
     }
 
-    if (!displayName?.trim()) {
-      throw new Error('Display name is required');
-    }
-
-    if (!['owner', 'viewer'].includes(role)) {
+    if (!['owner', 'guest'].includes(role)) {
       throw new Error('Invalid role');
     }
 
@@ -103,14 +107,18 @@ export const eventAuthService = {
       throw new Error('Owner selection is required');
     }
 
+    if (role === 'owner' && !ownerPassword?.trim()) {
+      throw new Error('Owner password is required');
+    }
+
     const response = await fetch(`${config.apiUrl}/events/${eventId}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         password: password.trim(),
-        displayName: displayName.trim(),
         role,
         ownerId: role === 'owner' ? ownerId : undefined,
+        ownerPassword: role === 'owner' ? ownerPassword.trim() : undefined,
       }),
     });
 
@@ -128,7 +136,7 @@ export const eventAuthService = {
     const session = {
       eventId: payload?.data?.eventId || eventId,
       eventSlug: payload?.data?.eventSlug || eventId,
-      displayName: payload?.data?.displayName || displayName.trim(),
+      displayName: payload?.data?.displayName || (role === 'owner' ? 'Owner' : 'Guest'),
       role: payload?.data?.role || role,
       ownerId: payload?.data?.ownerId || (role === 'owner' ? ownerId : ''),
       sessionToken,

@@ -1,4 +1,4 @@
-name,email,phone,avatar
-John Doe,john@example.com,+1234567890,https://example.com/avatar1.png
-Jane Smith,jane@example.com,+1234567891,https://example.com/avatar2.png
-Bob Johnson,bob@example.com,+1234567892,https://example.com/avatar3.png
+name,password,avatarUrl
+John Doe,ownerpass123,https://example.com/avatar1.png
+Jane Smith,ownerpass456,https://example.com/avatar2.png
+Bob Johnson,ownerpass789,https://example.com/avatar3.png

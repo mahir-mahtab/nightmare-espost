@@ -9,7 +9,7 @@ export interface AdminPayload {
 export interface EventSessionPayload {
   eventId: string;
   displayName: string;
-  role: 'owner' | 'viewer';
+  role: 'owner' | 'guest';
   ownerId?: string;
 }
 

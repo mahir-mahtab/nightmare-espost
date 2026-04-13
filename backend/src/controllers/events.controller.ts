@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import { authService } from '../services/authService.js';
 import { eventService } from '../services/eventService.js';
 import { auctionService } from '../services/auctionService.js';
@@ -56,11 +57,17 @@ export const eventsController = {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { eventId } = req.params; // This could be slug or ID
-      const { password, displayName, role, ownerId } = eventLoginSchema.parse(req.body);
+      const { password, role, ownerId, ownerPassword } = eventLoginSchema.parse(req.body);
+
+      const normalizedRole = role === 'guest' ? 'guest' : role;
 
       // Validate owner role requires ownerId
-      if (role === 'owner' && !ownerId) {
+      if (normalizedRole === 'owner' && !ownerId) {
         throw new AppError('Please choose an owner profile before logging in as owner.', 400, 'OWNER_ID_REQUIRED');
+      }
+
+      if (normalizedRole === 'owner' && !ownerPassword) {
+        throw new AppError('Owner password is required.', 400, 'OWNER_PASSWORD_REQUIRED');
       }
 
       // Verify event password and get event
@@ -72,20 +79,34 @@ export const eventsController = {
       // Get the actual event to use its ID
       const event = await eventService.getEvent(eventId);
 
-      // If owner role, verify ownerId exists
-      if (role === 'owner' && ownerId) {
-        const owners = await eventService.getOwners(event.id);
-        const ownerExists = owners.some((o: any) => o.id === ownerId);
-        if (!ownerExists) {
+      let resolvedDisplayName = 'Guest';
+      let resolvedOwnerId: string | undefined;
+
+      // If owner role, verify owner exists and password hash matches
+      if (normalizedRole === 'owner' && ownerId) {
+        const owner = await eventService.getOwnerById(event.id, ownerId);
+        if (!owner) {
           throw new AppError('Selected owner does not belong to this event.', 400, 'OWNER_NOT_IN_EVENT');
         }
+
+        if (!owner.passwordHash) {
+          throw new AppError('Owner password is not configured. Please contact event admin.', 400, 'OWNER_PASSWORD_NOT_SET');
+        }
+
+        const matches = await bcrypt.compare(ownerPassword || '', owner.passwordHash);
+        if (!matches) {
+          throw new AppError('Owner password is incorrect.', 401, 'OWNER_PASSWORD_INVALID');
+        }
+
+        resolvedDisplayName = owner.name;
+        resolvedOwnerId = owner.id;
       }
 
       const token = authService.generateEventSessionToken({
         eventId: event.id,
-        displayName,
-        role,
-        ownerId: role === 'owner' ? ownerId : undefined,
+        displayName: resolvedDisplayName,
+        role: normalizedRole,
+        ownerId: normalizedRole === 'owner' ? resolvedOwnerId : undefined,
       });
 
       res.json({
@@ -94,9 +115,9 @@ export const eventsController = {
           eventId: event.id,
           eventSlug: event.slug,
           sessionToken: token,
-          displayName,
-          role,
-          ownerId: role === 'owner' ? ownerId : undefined,
+          displayName: resolvedDisplayName,
+          role: normalizedRole,
+          ownerId: normalizedRole === 'owner' ? resolvedOwnerId : undefined,
         },
       });
     } catch (error) {

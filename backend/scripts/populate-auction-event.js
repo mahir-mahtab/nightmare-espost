@@ -71,6 +71,7 @@ async function run() {
 
   const ownersPayload = Array.from({ length: 14 }, (_item, index) => ({
     name: toOwnerName(index),
+    password: `owner${String(index + 1).padStart(2, '0')}123`,
   }));
 
   const owners = await request(`/api/admin/events/${event.id}/owners`, {

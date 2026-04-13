@@ -297,7 +297,7 @@ const AuctionHub = ({
                   Current Leader: <span className="font-bold text-primary">{selectedOwner?.name || 'No bids yet'}</span>
                 </p>
               </div>
-              {!canBid && <p className="text-[11px] text-amber-300">Viewer mode active. Only owner sessions can place bids.</p>}
+              {!canBid && <p className="text-[11px] text-amber-300">Guest mode active. Only owner sessions can place bids.</p>}
             </div>
           </div>
         </div>
@@ -986,7 +986,7 @@ const EventsPage = () => {
           {/* Session Info Bar */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-white/12 bg-black/35 p-3 md:p-4 rounded-lg">
             <div className="text-[11px] md:text-xs font-bold tracking-[0.16em] text-white/70 uppercase">
-              Current Session: {session?.displayName || 'User'} • {session?.role === 'owner' ? 'Administrator' : 'Spectator'}
+              Current Session: {session?.displayName || 'Guest'} • {session?.role === 'owner' ? 'Owner' : 'Guest'}
             </div>
             <div className={`text-[10px] font-bold tracking-[0.16em] uppercase ${socketConnected ? 'text-green-300' : 'text-yellow-300'}`}>
               Socket: {socketConnected ? 'Live' : 'Reconnecting'}

@@ -106,8 +106,7 @@ curl -X POST http://localhost:3000/api/events/EVENT_ID/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "password": "event123",
-    "displayName": "John Doe",
-    "role": "viewer"
+    "role": "guest"
   }'
 ```
 
@@ -131,6 +130,7 @@ curl -X POST http://localhost:3000/api/events/EVENT_ID/auth/login \
 [
   {
     "name": "John Doe",
+    "password": "ownerpass123",
     "avatarUrl": "https://example.com/avatar.jpg"
   }
 ]

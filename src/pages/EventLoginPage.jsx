@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { User, Users } from 'lucide-react';
 import PageShell from '../components/layout/PageShell.jsx';
 import { CyberCard } from '../components/ui/index.jsx';
 import { eventsService } from '../data/eventsService.js';
@@ -14,9 +15,9 @@ const EventLoginPage = () => {
   const [summary, setSummary] = useState(null);
   const [owners, setOwners] = useState([]);
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [role, setRole] = useState('viewer');
+  const [role, setRole] = useState('guest');
   const [ownerId, setOwnerId] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -44,13 +45,14 @@ const EventLoginPage = () => {
     };
 
     load();
-  }, []);
+  }, [eventId]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError('');
 
     try {
-      await login({ eventId, password, displayName, role, ownerId });
+      await login({ eventId, password, role, ownerId, ownerPassword });
       navigate(`/events/${eventId}/auction`, { replace: true });
     } catch (submitError) {
       setError(submitError.message || 'Login failed');
@@ -60,7 +62,7 @@ const EventLoginPage = () => {
   return (
     <PageShell
       title="Event Login"
-      subtitle="Login is event-specific. Owner login can bid; viewer login is read-only."
+      subtitle="Event password is required. Owner login can bid; guest login is read-only."
       accent="Secure Access"
     >
       <section className="px-6 pb-20">
@@ -76,6 +78,33 @@ const EventLoginPage = () => {
                 <p className="mt-2 text-xs font-bold tracking-[0.2em] text-primary uppercase">Event ID: {eventId}</p>
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setRole('guest')}
+                      className={`flex items-center gap-2 border px-3 py-2 text-[11px] font-bold tracking-[0.18em] uppercase transition-colors ${
+                        role === 'guest'
+                          ? 'border-primary/70 bg-primary/20 text-primary'
+                          : 'border-white/20 bg-black/55 text-white/70 hover:border-white/35'
+                      }`}
+                    >
+                      <Users className="h-4 w-4" />
+                      Guest Mode
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('owner')}
+                      className={`flex items-center gap-2 border px-3 py-2 text-[11px] font-bold tracking-[0.18em] uppercase transition-colors ${
+                        role === 'owner'
+                          ? 'border-primary/70 bg-primary/20 text-primary'
+                          : 'border-white/20 bg-black/55 text-white/70 hover:border-white/35'
+                      }`}
+                    >
+                      <User className="h-4 w-4" />
+                      Owner Mode
+                    </button>
+                  </div>
+
                   <label className="block">
                     <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Event Password</span>
                     <input
@@ -87,42 +116,32 @@ const EventLoginPage = () => {
                     />
                   </label>
 
-                  <label className="block">
-                    <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Display Name</span>
-                    <input
-                      value={displayName}
-                      onChange={(inputEvent) => setDisplayName(inputEvent.target.value)}
-                      type="text"
-                      placeholder="Enter your name"
-                      className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Role</span>
-                    <select
-                      value={role}
-                      onChange={(inputEvent) => setRole(inputEvent.target.value)}
-                      className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                    >
-                      <option value="viewer" className="bg-zinc-900">Viewer (read only)</option>
-                      <option value="owner" className="bg-zinc-900">Owner (can bid)</option>
-                    </select>
-                  </label>
-
                   {role === 'owner' && (
-                    <label className="block">
-                      <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Owner Account</span>
-                      <select
-                        value={ownerId}
-                        onChange={(inputEvent) => setOwnerId(inputEvent.target.value)}
-                        className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                      >
-                        {owners.map((owner) => (
-                          <option key={owner.id} value={owner.id} className="bg-zinc-900">{owner.name}</option>
-                        ))}
-                      </select>
-                    </label>
+                    <>
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Owner Account</span>
+                        <select
+                          value={ownerId}
+                          onChange={(inputEvent) => setOwnerId(inputEvent.target.value)}
+                          className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
+                        >
+                          {owners.map((owner) => (
+                            <option key={owner.id} value={owner.id} className="bg-zinc-900">{owner.name}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Owner Password</span>
+                        <input
+                          value={ownerPassword}
+                          onChange={(inputEvent) => setOwnerPassword(inputEvent.target.value)}
+                          type="password"
+                          placeholder="Enter owner password"
+                          className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
+                        />
+                      </label>
+                    </>
                   )}
 
                   {error && (
@@ -141,7 +160,7 @@ const EventLoginPage = () => {
                       type="submit"
                       className="border border-primary/60 bg-primary/20 px-4 py-2 text-[11px] font-bold tracking-[0.2em] text-primary uppercase"
                     >
-                      Login To Event
+                      {role === 'owner' ? 'Login As Owner' : 'Continue As Guest'}
                     </button>
                   </div>
                 </form>

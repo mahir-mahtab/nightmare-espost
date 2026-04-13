@@ -107,6 +107,13 @@ export const eventService = {
           },
         },
         owners: {
+          select: {
+            id: true,
+            eventId: true,
+            name: true,
+            avatarUrl: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: 'asc' },
         },
         teams: {
@@ -292,6 +299,13 @@ export const eventService = {
             ...owner,
             eventId,
           },
+          select: {
+            id: true,
+            eventId: true,
+            name: true,
+            avatarUrl: true,
+            createdAt: true,
+          },
         })
       )
     );
@@ -344,7 +358,20 @@ export const eventService = {
     ]);
 
     return {
-      ...event,
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      season: event.season,
+      game: event.game,
+      mode: event.mode,
+      registrationCount: event.registrationCount,
+      maxSlots: event.maxSlots,
+      streamStartTime: event.streamStartTime,
+      auctionWindowSeconds: event.auctionWindowSeconds,
+      bannerUrl: event.bannerUrl,
+      status: event.status,
+      createdAt: event.createdAt,
+      updatedAt: event.updatedAt,
       totalTeams: teamsCount,
       totalPlayers: playersCount,
       totalOwners: ownersCount,
@@ -400,7 +427,12 @@ export const eventService = {
     const event = await this.getEvent(eventIdOrSlug);
     return await prisma.owner.findMany({
       where: { eventId: event.id },
-      include: {
+      select: {
+        id: true,
+        eventId: true,
+        name: true,
+        avatarUrl: true,
+        createdAt: true,
         _count: {
           select: { teams: true },
         },
@@ -427,6 +459,13 @@ export const eventService = {
     return await prisma.owner.update({
       where: { id: ownerId },
       data,
+      select: {
+        id: true,
+        eventId: true,
+        name: true,
+        avatarUrl: true,
+        createdAt: true,
+      },
     });
   },
 

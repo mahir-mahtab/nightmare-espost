@@ -585,8 +585,8 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
 const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState('');
-  const [createForm, setCreateForm] = useState({ name: '', avatarUrl: '' });
-  const [editForm, setEditForm] = useState({ name: '', avatarUrl: '' });
+  const [createForm, setCreateForm] = useState({ name: '', password: '', avatarUrl: '' });
+  const [editForm, setEditForm] = useState({ name: '', password: '', avatarUrl: '' });
 
   const handleCreate = async () => {
     onError('');
@@ -600,6 +600,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: createForm.name,
+          password: createForm.password,
           avatarUrl: createForm.avatarUrl || undefined,
         }),
       });
@@ -607,7 +608,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       if (!response.ok) {
         throw new Error(apiErrorMessage(payload, 'Failed to create owner'));
       }
-      setCreateForm({ name: '', avatarUrl: '' });
+      setCreateForm({ name: '', password: '', avatarUrl: '' });
       onChanged('Owner created successfully');
     } catch (err) {
       onError(err.message || 'Failed to create owner');
@@ -618,7 +619,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
 
   const startEdit = (owner) => {
     setEditingId(owner.id);
-    setEditForm({ name: owner.name || '', avatarUrl: owner.avatarUrl || '' });
+    setEditForm({ name: owner.name || '', password: '', avatarUrl: owner.avatarUrl || '' });
   };
 
   const handleUpdate = async (ownerId) => {
@@ -632,6 +633,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: editForm.name,
+          ...(editForm.password.trim() ? { password: editForm.password } : {}),
           avatarUrl: editForm.avatarUrl || undefined,
         }),
       });
@@ -669,12 +671,19 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-3">
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-4">
         <input
           type="text"
           value={createForm.name}
           onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           placeholder="Owner name"
+          className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary"
+        />
+        <input
+          type="password"
+          value={createForm.password}
+          onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+          placeholder="Owner password"
           className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary"
         />
         <input
@@ -686,7 +695,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
         />
         <button
           type="button"
-          disabled={creating || !createForm.name.trim()}
+          disabled={creating || !createForm.name.trim() || !createForm.password.trim()}
           onClick={handleCreate}
           className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
         >
@@ -695,7 +704,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       </div>
 
       <DataTable
-        columns={['Owner ID', 'Name', 'Avatar URL', 'Actions']}
+        columns={['Owner ID', 'Name', 'Owner Password', 'Avatar URL', 'Actions']}
         rows={owners.map((owner) => [
           owner.id,
           editingId === owner.id ? (
@@ -705,6 +714,15 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
               className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary"
             />
           ) : owner.name,
+          editingId === owner.id ? (
+            <input
+              type="password"
+              value={editForm.password}
+              onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+              placeholder="Leave blank to keep"
+              className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary"
+            />
+          ) : '••••••••',
           editingId === owner.id ? (
             <input
               value={editForm.avatarUrl}
@@ -1696,7 +1714,7 @@ const BulkUploadModal = ({ eventId, token, initialType, onClose, onSuccess, onEr
 
   const exampleByType = {
     owners: `[
-  { "name": "Owner One", "avatarUrl": "https://example.com/owner1.png" }
+  { "name": "Owner One", "password": "ownerpass123", "avatarUrl": "https://example.com/owner1.png" }
 ]`,
     teams: `[
   { "name": "Team Alpha", "ownerId": "OWNER_UUID_HERE", "coinsLeft": 5000 }
@@ -1707,7 +1725,7 @@ const BulkUploadModal = ({ eventId, token, initialType, onClose, onSuccess, onEr
   };
 
   const schemaNoteByType = {
-    owners: 'Schema requires: name. Optional: avatarUrl (must be valid URL).',
+    owners: 'Schema requires: name + password. Optional: avatarUrl (must be valid URL).',
     teams: 'Schema requires: name + ownerId(UUID). Optional: coinsLeft.',
     players: 'Schema requires: name + role. Optional: rankPoint, basePrice, imageUrl(valid URL).',
   };

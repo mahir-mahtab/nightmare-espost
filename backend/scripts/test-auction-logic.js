@@ -49,7 +49,7 @@ async function setupAuctionData() {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${adminToken}`,
     },
-    body: JSON.stringify([{ name: 'Owner Auction', avatarUrl: 'https://i.pravatar.cc/150?u=auction' }]),
+    body: JSON.stringify([{ name: 'Owner Auction', password: 'owner-auction-123', avatarUrl: 'https://i.pravatar.cc/150?u=auction' }]),
   });
   const ownerData = await ownerRes.json();
   ownerId = ownerData.data[0].id;
@@ -77,9 +77,9 @@ async function setupAuctionData() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       password: 'event123',
-      displayName: 'Owner Auction Session',
       role: 'owner',
       ownerId,
+      ownerPassword: 'owner-auction-123',
     }),
   });
   const loginData = await loginRes.json();

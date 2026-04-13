@@ -53,10 +53,10 @@ async function testBulkUploadOwners() {
   console.log('👥 Test 1: Bulk Upload Owners');
   
   const ownersData = [
-    { name: 'Owner Alpha', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
-    { name: 'Owner Beta', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
-    { name: 'Owner Gamma', avatarUrl: 'https://i.pravatar.cc/150?u=gamma' },
-    { name: 'Owner Delta', avatarUrl: 'https://i.pravatar.cc/150?u=delta' },
+    { name: 'Owner Alpha', password: 'owner-alpha-123', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
+    { name: 'Owner Beta', password: 'owner-beta-123', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
+    { name: 'Owner Gamma', password: 'owner-gamma-123', avatarUrl: 'https://i.pravatar.cc/150?u=gamma' },
+    { name: 'Owner Delta', password: 'owner-delta-123', avatarUrl: 'https://i.pravatar.cc/150?u=delta' },
   ];
   
   try {

@@ -9,7 +9,8 @@ let adminToken = null;
 let testEventId = null;
 let testEventSlug = null;
 let ownerSessionToken = null;
-let viewerSessionToken = null;
+let guestSessionToken = null;
+let ownerId = null;
 
 async function getAdminToken() {
   const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
@@ -48,10 +49,42 @@ async function createTestEvent() {
   testEventId = data.data.id;
   testEventSlug = data.data.slug;
   console.log('✓ Test event created:', testEventSlug, '\n');
+
+  const ownersResponse = await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/owners`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify([
+      {
+        name: 'Test Owner',
+        password: 'owner1234',
+      },
+    ]),
+  });
+
+  const ownersData = await ownersResponse.json();
+  ownerId = ownersData.data[0].id;
+
+  await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/teams`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify([
+      {
+        name: 'Owner Team',
+        ownerId,
+        coinsLeft: 10000,
+      },
+    ]),
+  });
 }
 
-async function testEventLoginAsViewer() {
-  console.log('👁️  Test 1: Event Login as Viewer');
+async function testEventLoginAsGuest() {
+  console.log('👁️  Test 1: Event Login as Guest');
   
   try {
     const response = await fetch(`${API_BASE_URL}/api/events/${testEventSlug}/auth/login`, {
@@ -59,22 +92,21 @@ async function testEventLoginAsViewer() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         password: 'eventpass123',
-        displayName: 'Test Viewer',
-        role: 'viewer',
+        role: 'guest',
       }),
     });
     
     const data = await response.json();
     
     if (response.ok && data.success && data.data.sessionToken) {
-      viewerSessionToken = data.data.sessionToken;
-      console.log('✅ PASS: Viewer login successful');
+      guestSessionToken = data.data.sessionToken;
+      console.log('✅ PASS: Guest login successful');
       console.log('   Display Name:', data.data.displayName);
       console.log('   Role:', data.data.role);
-      console.log('   Session Token:', viewerSessionToken.substring(0, 20) + '...\n');
+      console.log('   Session Token:', guestSessionToken.substring(0, 20) + '...\n');
       return true;
     } else {
-      console.log('❌ FAIL: Viewer login failed');
+      console.log('❌ FAIL: Guest login failed');
       console.log('   Response:', data, '\n');
       return false;
     }
@@ -93,8 +125,7 @@ async function testEventLoginWithWrongPassword() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         password: 'wrongpassword',
-        displayName: 'Test User',
-        role: 'viewer',
+        role: 'guest',
       }),
     });
     
@@ -115,7 +146,7 @@ async function testEventLoginWithWrongPassword() {
 }
 
 async function testEventLoginAsOwner() {
-  console.log('👤 Test 3: Event Login as Owner (should fail without ownerId)');
+  console.log('👤 Test 3: Event Login as Owner');
   
   try {
     const response = await fetch(`${API_BASE_URL}/api/events/${testEventSlug}/auth/login`, {
@@ -123,19 +154,20 @@ async function testEventLoginAsOwner() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         password: 'eventpass123',
-        displayName: 'Test Owner',
         role: 'owner',
-        // Missing ownerId - should fail
+        ownerId,
+        ownerPassword: 'owner1234',
       }),
     });
     
     const data = await response.json();
     
-    if (response.status === 400 && !data.success) {
-      console.log('✅ PASS: Owner login without ownerId correctly rejected\n');
+    if (response.ok && data.success && data.data.sessionToken) {
+      ownerSessionToken = data.data.sessionToken;
+      console.log('✅ PASS: Owner login successful\n');
       return true;
     } else {
-      console.log('❌ FAIL: Owner login should require ownerId');
+      console.log('❌ FAIL: Owner login failed');
       console.log('   Response:', data, '\n');
       return false;
     }
@@ -147,8 +179,8 @@ async function testEventLoginAsOwner() {
 
 async function testVerifySession() {
   console.log('✓ Test 4: Verify Session');
-  
-  if (!viewerSessionToken) {
+
+  if (!guestSessionToken) {
     console.log('⚠️  SKIP: No session token available\n');
     return false;
   }
@@ -157,7 +189,7 @@ async function testVerifySession() {
     const response = await fetch(`${API_BASE_URL}/api/events/${testEventSlug}/auth/validate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${viewerSessionToken}`,
+        'Authorization': `Bearer ${guestSessionToken}`,
       },
     });
     
@@ -234,7 +266,7 @@ async function runTests() {
     await createTestEvent();
     
     // Run tests
-    await testEventLoginAsViewer();
+    await testEventLoginAsGuest();
     await testEventLoginWithWrongPassword();
     await testEventLoginAsOwner();
     await testVerifySession();
