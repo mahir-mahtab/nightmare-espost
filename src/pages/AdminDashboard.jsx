@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
+import { io } from 'socket.io-client';
 import {
   Plus,
   Trash2,
@@ -62,6 +63,135 @@ const apiErrorMessage = (payload, fallbackMessage) => {
   return baseMessage;
 };
 
+const EVENT_SLUG_REGEX = /^[a-z0-9-]{3,100}$/;
+const PERSON_NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
+const TEAM_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
+const PLAYER_ROLE_REGEX = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isValidUrl = (value) => {
+  if (!value) {
+    return true;
+  }
+
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const isIntInRange = (value, min, max) => {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric >= min && numeric <= max;
+};
+
+const validateEventForm = (formData) => {
+  if (!EVENT_SLUG_REGEX.test(toText(formData.slug).trim())) {
+    return 'Slug must be 3-100 chars (lowercase letters, numbers, hyphens).';
+  }
+  if (toText(formData.title).trim().length < 3 || toText(formData.title).trim().length > 255) {
+    return 'Title must be 3-255 characters.';
+  }
+  if (toText(formData.game).trim().length < 2 || toText(formData.game).trim().length > 100) {
+    return 'Game must be 2-100 characters.';
+  }
+  if (toText(formData.password).length < 4 || toText(formData.password).length > 50) {
+    return 'Password must be 4-50 characters.';
+  }
+  if (!isIntInRange(formData.registrationCount, 0, 100000)) {
+    return 'Registrations must be a whole number between 0 and 100000.';
+  }
+  if (!isIntInRange(formData.maxSlots, 0, 100000)) {
+    return 'Max slots must be a whole number between 0 and 100000.';
+  }
+  if (!isIntInRange(formData.auctionWindowSeconds, 10, 300)) {
+    return 'Auction window must be a whole number between 10 and 300 seconds.';
+  }
+  if (!isValidUrl(toOptional(formData.bannerUrl))) {
+    return 'Banner URL must be a valid URL.';
+  }
+
+  return '';
+};
+
+const validateOwnerForm = (formData, requirePassword) => {
+  if (!PERSON_NAME_REGEX.test(toText(formData.name).trim())) {
+    return 'Owner name format is invalid.';
+  }
+
+  const password = toText(formData.password);
+  if (requirePassword && (password.length < 4 || password.length > 100)) {
+    return 'Owner password must be 4-100 characters.';
+  }
+  if (!requirePassword && password && (password.length < 4 || password.length > 100)) {
+    return 'Owner password must be 4-100 characters.';
+  }
+
+  if (!isValidUrl(toOptional(formData.avatarUrl))) {
+    return 'Avatar URL must be a valid URL.';
+  }
+
+  return '';
+};
+
+const validateTeamForm = (formData) => {
+  if (!TEAM_NAME_REGEX.test(toText(formData.name).trim())) {
+    return 'Team name format is invalid.';
+  }
+  if (!UUID_REGEX.test(toText(formData.ownerId))) {
+    return 'Please select a valid owner.';
+  }
+  if (!isIntInRange(formData.coinsLeft, 0, 100000)) {
+    return 'Coins left must be a whole number between 0 and 100000.';
+  }
+
+  return '';
+};
+
+const validatePlayerForm = (formData) => {
+  const name = toText(formData.name).trim();
+  if (name.length < 2 || name.length > 255) {
+    return 'Player name must be 2-255 characters.';
+  }
+  if (!PLAYER_ROLE_REGEX.test(toText(formData.role).trim())) {
+    return 'Player role format is invalid.';
+  }
+  if (!isIntInRange(formData.rankPoint, 0, 100)) {
+    return 'Rank point must be a whole number between 0 and 100.';
+  }
+  if (!isIntInRange(formData.basePrice, 0, 100000)) {
+    return 'Base price must be a whole number between 0 and 100000.';
+  }
+  if (formData.finalPrice !== '' && formData.finalPrice !== null && formData.finalPrice !== undefined && !isIntInRange(formData.finalPrice, 0, 100000)) {
+    return 'Final price must be a whole number between 0 and 100000.';
+  }
+  if (!isValidUrl(toOptional(formData.imageUrl))) {
+    return 'Player image URL must be a valid URL.';
+  }
+
+  return '';
+};
+
+const validateLotForm = (formData) => {
+  if (!UUID_REGEX.test(toText(formData.playerId))) {
+    return 'Please select a valid player.';
+  }
+  if (!['PENDING', 'ACTIVE', 'SOLD', 'UNSOLD'].includes(toText(formData.status))) {
+    return 'Lot status is invalid.';
+  }
+  if (!isIntInRange(formData.lotOrder, 1, 10000)) {
+    return 'Lot order must be a whole number between 1 and 10000.';
+  }
+  const endsAt = toText(formData.endsAt).trim();
+  if (endsAt && Number.isNaN(Date.parse(endsAt))) {
+    return 'Ends at must be a valid datetime.';
+  }
+
+  return '';
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('admin-token');
@@ -77,6 +207,8 @@ const AdminDashboard = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [bulkType, setBulkType] = useState('owners');
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [liveAuctionState, setLiveAuctionState] = useState(null);
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -168,6 +300,59 @@ const AdminDashboard = () => {
     }
   }, [selectedEventId, fetchEventFull]);
 
+  useEffect(() => {
+    if (!token) {
+      return undefined;
+    }
+
+    const socketBaseUrl = config.apiUrl.replace(/\/api$/, '');
+    const socket = io(socketBaseUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 20,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 4000,
+      auth: {
+        token,
+      },
+    });
+
+    socket.on('connect', () => {
+      setSocketConnected(true);
+      if (selectedEventId) {
+        socket.emit('join_admin_event', { eventId: selectedEventId });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    socket.on('connect_error', () => {
+      setSocketConnected(false);
+    });
+
+    socket.on('auction_state', (state) => {
+      if (!state || !selectedEventId || state.eventId !== selectedEventId) {
+        return;
+      }
+
+      setLiveAuctionState(state);
+    });
+
+    socket.on('auction_error', (payload) => {
+      setError(payload?.message || 'Admin socket error');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, selectedEventId]);
+
+  useEffect(() => {
+    setLiveAuctionState(null);
+  }, [selectedEventId]);
+
   const handleLogout = () => {
     localStorage.removeItem('admin-token');
     navigate('/admin/login');
@@ -214,6 +399,9 @@ const AdminDashboard = () => {
               <p className="mt-2 text-sm text-white/60">Per-event workspace with dedicated controls</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <div className={`rounded border px-3 py-2 text-[10px] font-bold tracking-[0.16em] uppercase ${socketConnected ? 'border-green-400/50 bg-green-500/10 text-green-300' : 'border-yellow-400/50 bg-yellow-500/10 text-yellow-300'}`}>
+                Socket: {socketConnected ? 'Live' : 'Reconnecting'}
+              </div>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="inline-flex items-center gap-2 rounded border border-primary bg-primary px-4 py-2.5 text-sm font-bold uppercase text-black transition-all hover:bg-primary/90"
@@ -294,6 +482,11 @@ const AdminDashboard = () => {
                     <div>
                       <h2 className="font-display text-3xl font-black uppercase text-white">{eventData.title}</h2>
                       <p className="mt-1 text-xs text-white/60">/{eventData.slug} • {eventData.status}</p>
+                      {liveAuctionState && (
+                        <p className="mt-1 text-[11px] text-primary/80">
+                          Live Auction: {liveAuctionState.activeLotId ? `Lot ${liveAuctionState.activeLotId}` : 'No active lot'} • Time Left: {Number(liveAuctionState.timeLeft || 0)}s
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -491,6 +684,13 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
   const handleSave = async (e) => {
     e.preventDefault();
     onError('');
+
+    const validationMessage = validateEventForm(formData);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -590,6 +790,13 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
 
   const handleCreate = async () => {
     onError('');
+
+    const validationMessage = validateOwnerForm(createForm, true);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     setCreating(true);
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/owner`, {
@@ -624,6 +831,13 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
 
   const handleUpdate = async (ownerId) => {
     onError('');
+
+    const validationMessage = validateOwnerForm(editForm, false);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/owner/${ownerId}`, {
         method: 'PUT',
@@ -762,6 +976,13 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
 
   const handleCreate = async () => {
     onError('');
+
+    const validationMessage = validateTeamForm(createForm);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     setCreating(true);
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/team`, {
@@ -800,6 +1021,13 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
 
   const handleUpdate = async (teamId) => {
     onError('');
+
+    const validationMessage = validateTeamForm(editForm);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/team/${teamId}`, {
         method: 'PUT',
@@ -939,6 +1167,13 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
 
   const handleCreate = async () => {
     onError('');
+
+    const validationMessage = validatePlayerForm(createForm);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     setCreating(true);
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/player`, {
@@ -984,6 +1219,13 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
 
   const handleUpdate = async (playerId) => {
     onError('');
+
+    const validationMessage = validatePlayerForm(editForm);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/player/${playerId}`, {
         method: 'PUT',
@@ -1163,6 +1405,13 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
   const handleCreate = async () => {
     onError('');
+
+    const validationMessage = validateLotForm(createForm);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     setCreating(true);
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/lot`, {
@@ -1208,6 +1457,13 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
   const handleUpdate = async (lotId) => {
     onError('');
+
+    const validationMessage = validateLotForm(editForm);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/events/${eventId}/lot/${lotId}`, {
         method: 'PUT',
@@ -1348,6 +1604,21 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
       return;
     }
 
+    const selectedOwner = owners.find((owner) => owner.id === controlOwnerId);
+    const selectedLotName = selectedLot?.player?.name || selectedLot?.playerId || controlLotId;
+    const confirmMessage = [
+      'Emergency override will bypass normal bidding settlement.',
+      `Lot: ${selectedLotName}`,
+      `Owner: ${selectedOwner?.name || controlOwnerId}`,
+      `Amount: ${Number(controlAmount)}`,
+      '',
+      'Proceed with emergency override?',
+    ].join('\n');
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
     onError('');
     setAuctionBusy(true);
     try {
@@ -1358,7 +1629,6 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          lotId: controlLotId,
           ownerId: controlOwnerId,
           amount: Number(controlAmount),
         }),
@@ -1369,12 +1639,43 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
         throw new Error(apiErrorMessage(payload, 'Finalize failed'));
       }
 
-      onChanged('Lot finalized and sold successfully');
+      onChanged('Emergency override applied successfully');
     } catch (err) {
-      onError(err.message || 'Finalize failed');
+      onError(err.message || 'Emergency override failed');
     } finally {
       setAuctionBusy(false);
     }
+  };
+
+  const handleSettleCurrentLot = async () => {
+    if (!activeLot) {
+      onError('No active lot to settle');
+      return;
+    }
+
+    const previewOwner = activeLot.currentOwnerName || 'No bids';
+    const previewAmount = Number(activeLot.currentBid || 0);
+    const previewStatus = activeLot.currentOwnerId ? 'SOLD' : 'UNSOLD';
+    const lotName = activeLot.player?.name || activeLot.playerId;
+
+    const confirmMessage = [
+      `Settle current lot #${activeLot.lotOrder} (${lotName})?`,
+      `Expected Result: ${previewStatus}`,
+      `Winning Owner: ${previewOwner}`,
+      `Amount: ${previewAmount}`,
+      '',
+      'This will end bidding for this lot.',
+    ].join('\n');
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    await callAuctionControl('/lots/settle-current', {}, 'Current lot settled successfully');
+  };
+
+  const handleActivateNextLot = async () => {
+    await callAuctionControl('/next-lot', {}, 'Next pending lot activated');
   };
 
   const handleResetToPending = async () => {
@@ -1386,17 +1687,14 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
     onError('');
     setAuctionBusy(true);
     try {
-      const response = await fetch(`${API_URL}/events/${eventId}/lot/${selectedLot.id}`, {
-        method: 'PUT',
+      const response = await fetch(`${AUCTION_API_URL}/${eventId}/lots/reset-pending`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          playerId: selectedLot.playerId,
-          status: 'PENDING',
-          endsAt: null,
-          lotOrder: Number(selectedLot.lotOrder),
+          lotId: selectedLot.id,
         }),
       });
 
@@ -1405,7 +1703,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
         throw new Error(apiErrorMessage(payload, 'Failed to reset selected lot'));
       }
 
-      onChanged('Selected lot reset to pending state');
+      onChanged('Selected lot reset to pending state for re-auction');
     } catch (err) {
       onError(err.message || 'Failed to reset selected lot');
     } finally {
@@ -1449,196 +1747,204 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
           </div>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
-          <div className="space-y-3">
-            <div className="rounded border border-primary/30 bg-black/50 p-3">
-              <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Current Active Lot</p>
-              <p className="mt-1 text-sm font-bold text-white">
-                {activeLot ? `#${activeLot.lotOrder} - ${activeLot.player?.name || activeLot.playerId}` : 'No active lot'}
-              </p>
-              <p className="mt-1 text-xs text-white/65">
-                {activeLot ? `Bid: ${activeLot.currentBid || 0} | Time Left: ${activeLot.timeLeft || 0}s` : 'Start auction or activate a lot to begin.'}
-              </p>
-              <p className="mt-1 text-[10px] font-bold tracking-[0.14em] text-white/45 uppercase">
-                Runtime: {isAuctionRunning ? 'Running' : 'Stopped'} | Auto Progress: {autoProgress ? 'On' : 'Off'}
-              </p>
-            </div>
-
-            <div className="rounded border border-white/20 bg-black/50 p-3">
-              <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Selected Lot</p>
-              <p className="mt-1 text-sm font-bold text-white">
-                {selectedLot ? `#${selectedLot.lotOrder} - ${selectedLot.player?.name || selectedLot.playerId}` : 'No lot selected'}
-              </p>
-              <p className="mt-1 text-xs text-white/65">
-                {selectedLot
-                  ? `Status: ${selectedLot.status} | Highest: ${selectedLot.currentBid || 0} | Owner: ${selectedLot.currentOwnerName || 'None'}`
-                  : 'Choose a lot from the selector to control it.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded border border-white/20 bg-black/55 p-3">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-                Control Lot
-                <select
-                  value={controlLotId}
-                  onChange={(e) => setControlLotId(e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-                >
-                  {lots.map((lot) => (
-                    <option key={lot.id} value={lot.id}>
-                      #{lot.lotOrder} - {lot.player?.name || lot.playerId}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-                Winning Owner
-                <select
-                  value={controlOwnerId}
-                  onChange={(e) => setControlOwnerId(e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-                >
-                  <option value="">Select owner</option>
-                  {owners.map((owner) => (
-                    <option key={owner.id} value={owner.id}>{owner.name}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-                Final Amount
-                <input
-                  type="number"
-                  value={controlAmount}
-                  onChange={(e) => setControlAmount(Number(e.target.value || 0))}
-                  className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-                />
-              </label>
-
-              <label className="flex items-center gap-2 pt-1 text-[10px] font-bold tracking-[0.14em] text-white/75 uppercase">
-                <input
-                  type="checkbox"
-                  checked={autoProgress}
-                  onChange={(e) => handleSetAutoProgress(e.target.checked)}
-                  disabled={auctionBusy}
-                  className="h-4 w-4"
-                />
-                Auto Progress
-              </label>
-
-              <label className="block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
-                Extend Timer (sec)
-                <div className="mt-1.5 flex gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={300}
-                    value={extendSeconds}
-                    onChange={(e) => setExtendSeconds(Number(e.target.value || 1))}
-                    className="h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
-                  />
-                  <button
-                    type="button"
-                    disabled={auctionBusy || !activeLot || !isAuctionRunning || Number(extendSeconds) <= 0}
-                    onClick={handleExtendTimer}
-                    className="h-10 whitespace-nowrap rounded border border-indigo-400/55 bg-indigo-400/10 px-3 text-[11px] font-bold uppercase text-indigo-300 disabled:opacity-50"
-                  >
-                    Extend
-                  </button>
-                </div>
-              </label>
-            </div>
-
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-2">
-              <button
-                type="button"
-                disabled={auctionBusy || isAuctionRunning || lotSummary.pending === 0}
-                onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started')}
-                className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
-              >
-                Start
-              </button>
-              <button
-                type="button"
-                disabled={auctionBusy || !isAuctionRunning}
-                onClick={() => callAuctionControl('/stop', {}, 'Auction stopped')}
-                className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
-              >
-                Stop
-              </button>
-              <button
-                type="button"
-                disabled={auctionBusy || !activeLot || !isAuctionRunning}
-                onClick={() => callAuctionControl('/next-lot', {}, 'Moved to next lot')}
-                className="h-10 rounded border border-amber-300/50 bg-amber-300/10 px-3 text-xs font-bold uppercase text-amber-300 disabled:opacity-50"
-              >
-                Next Lot
-              </button>
-              <button
-                type="button"
-                disabled={auctionBusy || !controlLotId || isSelectedFinished || !isSelectedPending}
-                onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'ACTIVE' }, 'Selected lot activated')}
-                className="h-10 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-bold uppercase text-primary disabled:opacity-50"
-              >
-                Activate Lot
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-          <button
-            type="button"
-            disabled={auctionBusy || !controlLotId || !controlOwnerId || Number(controlAmount || 0) <= 0 || isSelectedFinished}
-            onClick={handleFinalizeSold}
-            className="h-10 rounded border border-green-500/60 bg-green-500/15 px-3 text-[11px] font-bold uppercase text-green-300 disabled:opacity-50"
-          >
-            Finalize Sold
-          </button>
-          <button
-            type="button"
-            disabled={auctionBusy || !controlLotId || isSelectedFinished}
-            onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'SOLD' }, 'Selected lot marked sold')}
-            className="h-10 rounded border border-emerald-400/45 bg-emerald-400/10 px-3 text-[11px] font-bold uppercase text-emerald-300 disabled:opacity-50"
-          >
-            Force Sold
-          </button>
-          <button
-            type="button"
-            disabled={auctionBusy || !controlLotId || isSelectedFinished}
-            onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'UNSOLD' }, 'Selected lot marked unsold')}
-            className="h-10 rounded border border-yellow-500/55 bg-yellow-500/10 px-3 text-[11px] font-bold uppercase text-yellow-300 disabled:opacity-50"
-          >
-            Mark Unsold
-          </button>
-          <button
-            type="button"
-            disabled={auctionBusy || !selectedLot}
-            onClick={handleResetToPending}
-            className="h-10 rounded border border-sky-400/45 bg-sky-400/10 px-3 text-[11px] font-bold uppercase text-sky-300 disabled:opacity-50"
-          >
-            Reset Pending
-          </button>
-          <button
-            type="button"
-            disabled={auctionBusy || !controlLotId}
-            onClick={() => {
-              setEditingId(controlLotId);
-              const selected = lots.find((lot) => lot.id === controlLotId);
-              if (selected) {
-                startEdit(selected);
-              }
-            }}
-            className="h-10 rounded border border-white/30 bg-black/60 px-3 text-[11px] font-bold uppercase text-white disabled:opacity-50"
-          >
-            Open Row Editor
-          </button>
-        </div>
         <div className="mt-3 rounded border border-white/15 bg-black/35 p-2 text-[10px] text-white/70">
-          Workflow guardrails: only pending lots can be activated; sold/unsold lots are finalized and cannot be restarted; timer extension only works while auction is running with an active lot.
+          Workflow guardrails: settle current lot first, then activate next lot. Reset to pending refunds sold coins and re-opens the lot for re-auction.
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded border border-sky-400/30 bg-sky-500/10 p-3">
+          <p className="text-[10px] font-bold tracking-[0.16em] text-sky-200/85 uppercase">Auction Control</p>
+          <p className="mt-1 text-xs text-white/65">Start auction (first pending lot), stop auction, and monitor runtime.</p>
+          <div className="mt-3 rounded border border-white/20 bg-black/50 p-3">
+            <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Current Active Lot</p>
+            <p className="mt-1 text-sm font-bold text-white">
+              {activeLot ? `#${activeLot.lotOrder} - ${activeLot.player?.name || activeLot.playerId}` : 'No active lot'}
+            </p>
+            <p className="mt-1 text-xs text-white/65">
+              {activeLot ? `Bid: ${activeLot.currentBid || 0} | Time Left: ${activeLot.timeLeft || 0}s` : 'Start auction or activate next lot to begin.'}
+            </p>
+            <p className="mt-1 text-[10px] font-bold tracking-[0.14em] text-white/45 uppercase">
+              Runtime: {isAuctionRunning ? 'Running' : 'Stopped'}
+            </p>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={auctionBusy || isAuctionRunning || lotSummary.pending === 0}
+              onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started with first pending lot')}
+              className="h-10 rounded border border-sky-300/70 bg-sky-300/20 px-3 text-xs font-bold uppercase text-sky-100 disabled:opacity-50"
+            >
+              Start Auction
+            </button>
+            <button
+              type="button"
+              disabled={auctionBusy || !isAuctionRunning}
+              onClick={() => callAuctionControl('/stop', {}, 'Auction stopped')}
+              className="h-10 rounded border border-white/30 bg-black/60 px-3 text-xs font-bold uppercase text-white disabled:opacity-50"
+            >
+              Stop Auction
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded border border-amber-400/35 bg-amber-500/10 p-3">
+          <p className="text-[10px] font-bold tracking-[0.16em] text-amber-200/90 uppercase">Manual Lot Control</p>
+          <p className="mt-1 text-xs text-white/65">Settle the active lot first, then activate the next pending lot.</p>
+
+          <label className="mt-3 block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+            Control Lot
+            <select
+              value={controlLotId}
+              onChange={(e) => setControlLotId(e.target.value)}
+              className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+            >
+              {lots.map((lot) => (
+                <option key={lot.id} value={lot.id}>
+                  #{lot.lotOrder} - {lot.player?.name || lot.playerId}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="mt-2 rounded border border-white/20 bg-black/50 p-3">
+            <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Selected Lot</p>
+            <p className="mt-1 text-sm font-bold text-white">
+              {selectedLot ? `#${selectedLot.lotOrder} - ${selectedLot.player?.name || selectedLot.playerId}` : 'No lot selected'}
+            </p>
+            <p className="mt-1 text-xs text-white/65">
+              {selectedLot
+                ? `Status: ${selectedLot.status} | Highest: ${selectedLot.currentBid || 0} | Owner: ${selectedLot.currentOwnerName || 'None'}`
+                : 'Choose a lot from the selector.'}
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={auctionBusy || !activeLot || !isAuctionRunning}
+              onClick={handleSettleCurrentLot}
+              className="h-10 rounded border border-amber-300/60 bg-amber-300/15 px-3 text-xs font-bold uppercase text-amber-200 disabled:opacity-50"
+            >
+              Settle Current Lot
+            </button>
+            <button
+              type="button"
+              disabled={auctionBusy || Boolean(activeLot) || lotSummary.pending === 0}
+              onClick={handleActivateNextLot}
+              className="h-10 rounded border border-amber-400/60 bg-amber-400/15 px-3 text-xs font-bold uppercase text-amber-200 disabled:opacity-50"
+            >
+              Activate Next Lot
+            </button>
+            <button
+              type="button"
+              disabled={auctionBusy || !controlLotId || isSelectedFinished || !isSelectedPending}
+              onClick={() => callAuctionControl('/manual-lot-override', { lotId: controlLotId, status: 'ACTIVE' }, 'Selected pending lot activated')}
+              className="h-10 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-bold uppercase text-primary disabled:opacity-50"
+            >
+              Jump To Lot
+            </button>
+            <button
+              type="button"
+              disabled={auctionBusy || !selectedLot || selectedLot.status === 'ACTIVE' || selectedLot.status === 'PENDING'}
+              onClick={handleResetToPending}
+              className="h-10 rounded border border-sky-400/45 bg-sky-400/10 px-3 text-[11px] font-bold uppercase text-sky-300 disabled:opacity-50"
+            >
+              Reset To Pending
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded border border-red-400/35 bg-red-500/10 p-3">
+          <p className="text-[10px] font-bold tracking-[0.16em] text-red-200/90 uppercase">Advanced Controls</p>
+          <p className="mt-1 text-xs text-white/65">Timer updates, auto progression, and emergency override.</p>
+
+          <label className="mt-3 flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] text-white/75 uppercase">
+            <input
+              type="checkbox"
+              checked={autoProgress}
+              onChange={(e) => handleSetAutoProgress(e.target.checked)}
+              disabled={auctionBusy}
+              className="h-4 w-4"
+            />
+            Auto Progress (settle + activate next on timeout)
+          </label>
+
+          <label className="mt-3 block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+            Extend Timer (sec)
+            <div className="mt-1.5 flex gap-2">
+              <input
+                type="number"
+                min={1}
+                max={300}
+                value={extendSeconds}
+                onChange={(e) => setExtendSeconds(Number(e.target.value || 1))}
+                className="h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                disabled={auctionBusy || !activeLot || !isAuctionRunning || Number(extendSeconds) <= 0}
+                onClick={handleExtendTimer}
+                className="h-10 whitespace-nowrap rounded border border-indigo-400/55 bg-indigo-400/10 px-3 text-[11px] font-bold uppercase text-indigo-300 disabled:opacity-50"
+              >
+                Extend
+              </button>
+            </div>
+          </label>
+
+          <div className="mt-3 rounded border border-red-300/35 bg-black/45 p-3">
+            <p className="text-[10px] font-bold tracking-[0.14em] text-red-200 uppercase">Emergency Override</p>
+            <p className="mt-1 text-[10px] text-white/60">Use only when manual correction is required.</p>
+
+            <label className="mt-2 block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+              Winning Owner
+              <select
+                value={controlOwnerId}
+                onChange={(e) => setControlOwnerId(e.target.value)}
+                className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+              >
+                <option value="">Select owner</option>
+                {owners.map((owner) => (
+                  <option key={owner.id} value={owner.id}>{owner.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="mt-2 block text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">
+              Final Amount
+              <input
+                type="number"
+                value={controlAmount}
+                onChange={(e) => setControlAmount(Number(e.target.value || 0))}
+                className="mt-1.5 h-10 w-full rounded border border-white/30 bg-black/60 px-3 text-xs text-white outline-none focus:border-primary"
+              />
+            </label>
+
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={auctionBusy || !controlLotId || !controlOwnerId || Number(controlAmount || 0) <= 0 || isSelectedFinished}
+                onClick={handleFinalizeSold}
+                className="h-10 rounded border border-red-400/65 bg-red-400/15 px-3 text-[11px] font-bold uppercase text-red-200 disabled:opacity-50"
+              >
+                Emergency Override
+              </button>
+              <button
+                type="button"
+                disabled={auctionBusy || !controlLotId}
+                onClick={() => {
+                  setEditingId(controlLotId);
+                  const selected = lots.find((lot) => lot.id === controlLotId);
+                  if (selected) {
+                    startEdit(selected);
+                  }
+                }}
+                className="h-10 rounded border border-white/30 bg-black/60 px-3 text-[11px] font-bold uppercase text-white disabled:opacity-50"
+              >
+                Open Row Editor
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1837,6 +2143,13 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
   const handleCreate = async (e) => {
     e.preventDefault();
     onError('');
+
+    const validationMessage = validateEventForm(formData);
+    if (validationMessage) {
+      onError(validationMessage);
+      return;
+    }
+
     setLoading(true);
 
     try {

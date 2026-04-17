@@ -15,6 +15,12 @@ const AdminLoginPage = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (password.trim().length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
     setLoading(true);
 
     try {

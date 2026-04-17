@@ -3,6 +3,7 @@ import { z } from 'zod';
 const personNameRegex = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const teamNameRegex = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const playerRoleRegex = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
+const eventIdOrSlugRegex = /^[A-Za-z0-9-]{3,120}$/;
 
 // Event validation schemas
 export const createEventSchema = z.object({
@@ -115,6 +116,15 @@ export const placeBidSchema = z.object({
   ownerId: z.string().uuid().optional(),
 });
 
+export const finalizePurchaseSchema = z.object({
+  ownerId: z.string().uuid(),
+  amount: z.number().int().min(1),
+});
+
+export const resetLotSchema = z.object({
+  lotId: z.string().uuid(),
+});
+
 export const updateLotStatusSchema = z.object({
   status: z.enum(['sold', 'unsold', 'active']),
 });
@@ -130,4 +140,39 @@ export const manualLotOverrideSchema = z.object({
 
 export const extendTimerSchema = z.object({
   seconds: z.number().int().min(1).max(300),
+});
+
+// Route params / query validation
+export const eventIdParamSchema = z.object({
+  eventId: z.string().trim().regex(eventIdOrSlugRegex, 'Invalid event identifier format'),
+});
+
+export const eventOwnerParamSchema = z.object({
+  eventId: z.string().trim().regex(eventIdOrSlugRegex, 'Invalid event identifier format'),
+  ownerId: z.string().uuid(),
+});
+
+export const eventTeamParamSchema = z.object({
+  eventId: z.string().trim().regex(eventIdOrSlugRegex, 'Invalid event identifier format'),
+  teamId: z.string().uuid(),
+});
+
+export const eventPlayerParamSchema = z.object({
+  eventId: z.string().trim().regex(eventIdOrSlugRegex, 'Invalid event identifier format'),
+  playerId: z.string().uuid(),
+});
+
+export const eventLotParamSchema = z.object({
+  eventId: z.string().trim().regex(eventIdOrSlugRegex, 'Invalid event identifier format'),
+  lotId: z.string().uuid(),
+});
+
+export const listEventsQuerySchema = z.object({
+  status: z.enum(['UPCOMING', 'LIVE', 'COMPLETED']).optional(),
+});
+
+export const playersQuerySchema = z.object({
+  search: z.string().trim().min(1).max(100).optional(),
+  role: z.string().trim().min(1).max(50).optional(),
+  status: z.enum(['ACTIVE', 'SOLD', 'UNSOLD']).optional(),
 });

@@ -8,6 +8,8 @@ import {
   eventLoginSchema,
   ownerSignupSchema,
   playerSignupSchema,
+  eventIdParamSchema,
+  playersQuerySchema,
 } from '../utils/validators.js';
 
 export const eventsController = {
@@ -27,7 +29,7 @@ export const eventsController = {
 
   async getLoginContext(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const event = await eventService.getEvent(eventId);
       const owners = await eventService.getOwners(event.id);
 
@@ -59,7 +61,7 @@ export const eventsController = {
 
   async getSignupContext(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const event = await eventService.getEvent(eventId);
 
       res.json({
@@ -86,7 +88,7 @@ export const eventsController = {
   // Event login
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params; // This could be slug or ID
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const { password, role, ownerId, ownerPassword } = eventLoginSchema.parse(req.body);
 
       const normalizedRole = role === 'guest' ? 'guest' : role;
@@ -157,7 +159,7 @@ export const eventsController = {
 
   async signupOwner(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const payload = ownerSignupSchema.parse(req.body);
 
       const isValid = await eventService.verifyEventPassword(eventId, payload.eventPassword);
@@ -193,7 +195,7 @@ export const eventsController = {
 
   async signupPlayer(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const payload = playerSignupSchema.parse(req.body);
 
       const isValid = await eventService.verifyEventPassword(eventId, payload.eventPassword);
@@ -250,7 +252,7 @@ export const eventsController = {
   // Get event summary
   async getEventSummary(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const summary = await eventService.getEventSummary(eventId);
 
       res.json({
@@ -265,7 +267,7 @@ export const eventsController = {
   // Get teams
   async getTeams(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const teams = await eventService.getTeams(eventId);
 
       res.json({
@@ -280,7 +282,7 @@ export const eventsController = {
   // Get owners
   async getOwners(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const owners = await eventService.getOwners(eventId);
 
       res.json({
@@ -295,13 +297,17 @@ export const eventsController = {
   // Get players
   async getPlayers(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
-      const { search, role, status } = req.query;
+      const { eventId } = eventIdParamSchema.parse(req.params);
+      const query = playersQuerySchema.parse({
+        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        role: typeof req.query.role === 'string' ? req.query.role : undefined,
+        status: typeof req.query.status === 'string' ? String(req.query.status).toUpperCase() : undefined,
+      });
 
       const players = await eventService.getPlayers(eventId, {
-        search: search as string,
-        role: role as string,
-        status: status as any,
+        search: query.search,
+        role: query.role,
+        status: query.status,
       });
 
       res.json({
@@ -316,7 +322,7 @@ export const eventsController = {
   // Get auction board
   async getAuctionBoard(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const auctionState = await auctionService.getAuctionState(eventId);
 
       res.json({

@@ -51,6 +51,21 @@ const EventLoginPage = () => {
     event.preventDefault();
     setError('');
 
+    if (password.trim().length < 4) {
+      setError('Event password must be at least 4 characters.');
+      return;
+    }
+
+    if (role === 'owner' && !ownerId) {
+      setError('Please select an owner account.');
+      return;
+    }
+
+    if (role === 'owner' && ownerPassword.trim().length < 4) {
+      setError('Owner password must be at least 4 characters.');
+      return;
+    }
+
     try {
       await login({ eventId, password, role, ownerId, ownerPassword });
       navigate(`/events/${eventId}/auction`, { replace: true });

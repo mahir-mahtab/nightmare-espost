@@ -3,6 +3,10 @@ import { AppError } from '../middleware/errorHandler.js';
 import { auctionService } from '../services/auctionService.js';
 import {
   placeBidSchema,
+  finalizePurchaseSchema,
+  resetLotSchema,
+  eventIdParamSchema,
+  eventLotParamSchema,
   updateLotStatusSchema,
   auctionStartSchema,
   manualLotOverrideSchema,
@@ -13,7 +17,7 @@ import { socketServer } from '../realtime/socketServer.js';
 export const auctionController = {
   async getState(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const state = await auctionService.getAuctionState(eventId);
       res.json({
         success: true,
@@ -26,7 +30,7 @@ export const auctionController = {
 
   async placeBid(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const body = placeBidSchema.parse(req.body);
       const session = (req as any).session;
 
@@ -66,7 +70,7 @@ export const auctionController = {
 
   async markLotStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, lotId } = req.params;
+      const { eventId, lotId } = eventLotParamSchema.parse(req.params);
       const body = updateLotStatusSchema.parse(req.body);
 
       const statusMap: Record<string, 'SOLD' | 'UNSOLD' | 'ACTIVE'> = {
@@ -94,15 +98,17 @@ export const auctionController = {
 
   async finalizePurchase(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, lotId } = req.params;
-      const body = placeBidSchema.parse(req.body);
-      const ownerId = body.ownerId || (req as any).session?.ownerId;
+      const { eventId, lotId } = eventLotParamSchema.parse(req.params);
+      const body = finalizePurchaseSchema.parse(req.body || {});
+      const ownerId = body.ownerId;
 
       if (!ownerId) {
         throw new AppError('Winning owner is required to finalize a sold lot.', 400, 'FINALIZE_OWNER_REQUIRED');
       }
 
-      const result = await auctionService.finalizePurchase(eventId, lotId, ownerId, body.amount);
+      const adminInfo = (req as any).admin || null;
+      const adminIdentity = adminInfo?.id || adminInfo?.email || adminInfo?.name || adminInfo?.username || 'admin';
+      const result = await auctionService.finalizePurchase(eventId, lotId, ownerId, body.amount, adminIdentity);
 
       socketServer.emitLotStatusChanged(result.eventId, {
         eventId: result.eventId,
@@ -119,9 +125,29 @@ export const auctionController = {
     }
   },
 
+  async settleCurrentLot(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = eventIdParamSchema.parse(req.params);
+      const result = await auctionService.settleCurrentLot(eventId);
+
+      socketServer.emitLotStatusChanged(eventId, {
+        eventId,
+        lot: result.lot,
+      });
+      await socketServer.emitFullAuctionState(eventId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async startAuction(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const body = auctionStartSchema.parse(req.body || {});
       const runtime = await auctionService.startAuction(eventId, Boolean(body.autoProgress));
 
@@ -142,7 +168,7 @@ export const auctionController = {
 
   async stopAuction(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const runtime = await auctionService.stopAuction(eventId);
 
       socketServer.emitAuctionStopped(eventId, { eventId });
@@ -159,8 +185,8 @@ export const auctionController = {
 
   async nextLot(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
-      const result = await auctionService.nextLot(eventId);
+      const { eventId } = eventIdParamSchema.parse(req.params);
+      const result = await auctionService.activateNextLot(eventId);
 
       socketServer.emitActiveLotChanged(eventId, {
         eventId,
@@ -177,9 +203,30 @@ export const auctionController = {
     }
   },
 
+  async resetLotToPending(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { eventId } = eventIdParamSchema.parse(req.params);
+      const body = resetLotSchema.parse(req.body || {});
+      const result = await auctionService.resetLotToPending(eventId, body.lotId);
+
+      socketServer.emitLotStatusChanged(eventId, {
+        eventId,
+        lot: result.lot,
+      });
+      await socketServer.emitFullAuctionState(eventId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async manualLotOverride(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const payload = manualLotOverrideSchema.parse(req.body);
 
       const result = await auctionService.manualLotOverride(eventId, payload.lotId, payload.status);
@@ -205,7 +252,7 @@ export const auctionController = {
 
   async updateRuntime(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const body = auctionStartSchema.parse(req.body || {});
 
       const runtime = await auctionService.updateRuntimeSettings(eventId, {
@@ -225,7 +272,7 @@ export const auctionController = {
 
   async extendActiveTimer(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const body = extendTimerSchema.parse(req.body || {});
 
       const result = await auctionService.extendActiveLotTimer(eventId, body.seconds);

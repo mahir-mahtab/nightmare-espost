@@ -10,6 +10,8 @@ router.get('/:eventId/state', requireEventAuth, auctionController.getState);
 router.post('/:eventId/bid', requireEventAuth, requireOwnerRole, auctionController.placeBid);
 router.post('/:eventId/lots/:lotId/status', requireAdmin, auctionController.markLotStatus);
 router.post('/:eventId/lots/:lotId/finalize', requireAdmin, auctionController.finalizePurchase);
+router.post('/:eventId/lots/settle-current', requireAdmin, auctionController.settleCurrentLot);
+router.post('/:eventId/lots/reset-pending', requireAdmin, auctionController.resetLotToPending);
 
 router.post('/:eventId/start', requireAdmin, auctionController.startAuction);
 router.post('/:eventId/stop', requireAdmin, auctionController.stopAuction);

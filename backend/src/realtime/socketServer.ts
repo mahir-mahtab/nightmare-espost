@@ -6,8 +6,11 @@ import { auctionService } from '../services/auctionService.js';
 import { logger } from '../utils/logger.js';
 
 const SOCKET_PREFIX = 'event:';
+const ADMIN_GLOBAL_ROOM = 'admin:global';
+const ADMIN_EVENT_PREFIX = 'admin:event:';
 
 const eventRoom = (eventId: string) => `${SOCKET_PREFIX}${eventId}`;
+const adminEventRoom = (eventId: string) => `${ADMIN_EVENT_PREFIX}${eventId}`;
 
 let io: SocketIOServer | null = null;
 let timerHandle: NodeJS.Timeout | null = null;
@@ -30,6 +33,7 @@ const emitAuctionState = async (eventId: string) => {
   if (!io) return;
   const state = await auctionService.getAuctionState(eventId);
   io.to(eventRoom(eventId)).emit('auction_state', state);
+  io.to(adminEventRoom(eventId)).emit('auction_state', state);
 };
 
 const emitLotChanged = async (eventId: string, lotId: string) => {
@@ -38,12 +42,18 @@ const emitLotChanged = async (eventId: string, lotId: string) => {
   const lot = board.lots.find((item: any) => item.id === lotId);
   if (lot) {
     io.to(eventRoom(eventId)).emit('lot_status_changed', { eventId, lot });
+    io.to(adminEventRoom(eventId)).emit('lot_status_changed', { eventId, lot });
   }
 };
 
 const emitActiveLotChanged = (eventId: string, fromLotId: string | null, toLotId: string | null) => {
   if (!io) return;
   io.to(eventRoom(eventId)).emit('active_lot_changed', {
+    eventId,
+    previousLotId: fromLotId,
+    newLotId: toLotId,
+  });
+  io.to(adminEventRoom(eventId)).emit('active_lot_changed', {
     eventId,
     previousLotId: fromLotId,
     newLotId: toLotId,
@@ -71,6 +81,13 @@ const runTickerCycle = async () => {
       try {
         const tickResult = await auctionService.tickAuction(eventId);
         io.to(eventRoom(eventId)).emit('timer_tick', {
+          eventId,
+          timeLeft: computeTimeLeft(tickResult.runtime.activeLotEndsAt),
+          activeLotId: tickResult.runtime.activeLotId,
+          activeLotEndsAt: tickResult.runtime.activeLotEndsAt || null,
+          serverNow: Date.now(),
+        });
+        io.to(adminEventRoom(eventId)).emit('timer_tick', {
           eventId,
           timeLeft: computeTimeLeft(tickResult.runtime.activeLotEndsAt),
           activeLotId: tickResult.runtime.activeLotId,
@@ -131,6 +148,13 @@ export const socketServer = {
           return next(new Error('Socket auth token required'));
         }
 
+        const adminPayload = authService.verifyAdminToken(token);
+        if (adminPayload) {
+          socket.data.admin = adminPayload;
+          socket.data.isAdmin = true;
+          return next();
+        }
+
         const payload = authService.verifyEventSessionToken(token);
         if (!payload) {
           return next(new Error('Invalid or expired socket session token'));
@@ -145,6 +169,48 @@ export const socketServer = {
     });
 
     io.on('connection', (socket) => {
+      if (socket.data?.isAdmin) {
+        socket.join(ADMIN_GLOBAL_ROOM);
+
+        socket.on('join_admin_event', async (payload: { eventId?: string }) => {
+          try {
+            if (!payload?.eventId) {
+              socket.emit('auction_error', { message: 'Event id is required', code: 'ADMIN_EVENT_ID_REQUIRED' });
+              return;
+            }
+
+            const event = await eventService.getEvent(payload.eventId);
+            socket.join(adminEventRoom(event.id));
+            await emitAuctionState(event.id);
+            socket.emit('joined_admin_event', { eventId: event.id });
+          } catch (error: any) {
+            socket.emit('auction_error', {
+              message: error?.message || 'Failed to join admin event room',
+              code: 'ADMIN_JOIN_EVENT_FAILED',
+            });
+          }
+        });
+
+        socket.on('leave_admin_event', async (payload: { eventId?: string }) => {
+          if (!payload?.eventId) {
+            return;
+          }
+
+          try {
+            const event = await eventService.getEvent(payload.eventId);
+            socket.leave(adminEventRoom(event.id));
+          } catch {
+            // no-op
+          }
+        });
+
+        socket.on('disconnect', () => {
+          logger.debug(`Admin socket disconnected: ${socket.id}`);
+        });
+
+        return;
+      }
+
       const eventId = getSocketEventId(socket);
       if (!eventId) {
         socket.emit('auction_error', { message: 'Missing event context', code: 'SOCKET_EVENT_CONTEXT_MISSING' });
@@ -191,26 +257,31 @@ export const socketServer = {
   emitNewBid(eventId: string, payload: any) {
     if (!io) return;
     io.to(eventRoom(eventId)).emit('new_bid', payload);
+    io.to(adminEventRoom(eventId)).emit('new_bid', payload);
   },
 
   emitLotStatusChanged(eventId: string, payload: any) {
     if (!io) return;
     io.to(eventRoom(eventId)).emit('lot_status_changed', payload);
+    io.to(adminEventRoom(eventId)).emit('lot_status_changed', payload);
   },
 
   emitActiveLotChanged(eventId: string, payload: any) {
     if (!io) return;
     io.to(eventRoom(eventId)).emit('active_lot_changed', payload);
+    io.to(adminEventRoom(eventId)).emit('active_lot_changed', payload);
   },
 
   emitAuctionStarted(eventId: string, payload: any) {
     if (!io) return;
     io.to(eventRoom(eventId)).emit('auction_started', payload);
+    io.to(adminEventRoom(eventId)).emit('auction_started', payload);
   },
 
   emitAuctionStopped(eventId: string, payload: any) {
     if (!io) return;
     io.to(eventRoom(eventId)).emit('auction_stopped', payload);
+    io.to(adminEventRoom(eventId)).emit('auction_stopped', payload);
   },
 
   async emitFullAuctionState(eventId: string) {

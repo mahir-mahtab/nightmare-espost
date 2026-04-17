@@ -19,6 +19,12 @@ import {
   updatePlayerSchema,
   createAuctionLotSchema,
   updateAuctionLotSchema,
+  eventIdParamSchema,
+  eventOwnerParamSchema,
+  eventTeamParamSchema,
+  eventPlayerParamSchema,
+  eventLotParamSchema,
+  listEventsQuerySchema,
 } from '../utils/validators.js';
 
 export const adminController = {
@@ -60,8 +66,10 @@ export const adminController = {
   // List events
   async listEvents(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status } = req.query;
-      const events = await eventService.listEvents(status as any);
+      const query = listEventsQuerySchema.parse({
+        status: typeof req.query.status === 'string' ? String(req.query.status).toUpperCase() : undefined,
+      });
+      const events = await eventService.listEvents(query.status);
 
       res.json({
         success: true,
@@ -75,7 +83,7 @@ export const adminController = {
   // Get event
   async getEvent(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const event = await eventService.getEventById(eventId);
 
       res.json({
@@ -90,7 +98,7 @@ export const adminController = {
   // Get full event workspace data
   async getEventFull(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const event = await eventService.getEventFullForAdmin(eventId);
 
       res.json({
@@ -105,7 +113,7 @@ export const adminController = {
   // Update event
   async updateEvent(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const eventData = updateEventSchema.parse(req.body);
       const event = await eventService.updateEvent(eventId, eventData);
 
@@ -121,7 +129,7 @@ export const adminController = {
   // Delete event
   async deleteEvent(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       await eventService.deleteEvent(eventId);
 
       res.json({
@@ -136,7 +144,7 @@ export const adminController = {
   // Create teams (bulk)
   async createTeams(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       
       // Support both JSON and CSV input
       let teams;
@@ -163,7 +171,7 @@ export const adminController = {
   // Create owner
   async createOwner(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const ownerData = createOwnerSchema.parse(req.body);
       const passwordHash = await bcrypt.hash(ownerData.password, 10);
       const [owner] = await eventService.createOwners(eventId, [{
@@ -184,7 +192,7 @@ export const adminController = {
   // Update owner
   async updateOwner(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, ownerId } = req.params;
+      const { eventId, ownerId } = eventOwnerParamSchema.parse(req.params);
       const ownerData = updateOwnerSchema.parse(req.body);
       const payload: any = {
         ...(ownerData.name !== undefined ? { name: ownerData.name } : {}),
@@ -209,7 +217,7 @@ export const adminController = {
   // Delete owner
   async deleteOwner(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, ownerId } = req.params;
+      const { eventId, ownerId } = eventOwnerParamSchema.parse(req.params);
       await eventService.deleteOwner(eventId, ownerId);
 
       res.json({
@@ -224,7 +232,7 @@ export const adminController = {
   // Create team
   async createTeam(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const teamData = createTeamSchema.parse(req.body);
       const [team] = await eventService.createTeams(eventId, [teamData]);
 
@@ -240,7 +248,7 @@ export const adminController = {
   // Update team
   async updateTeam(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, teamId } = req.params;
+      const { eventId, teamId } = eventTeamParamSchema.parse(req.params);
       const teamData = updateTeamSchema.parse(req.body);
       const team = await eventService.updateTeam(eventId, teamId, teamData);
 
@@ -256,7 +264,7 @@ export const adminController = {
   // Delete team
   async deleteTeam(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, teamId } = req.params;
+      const { eventId, teamId } = eventTeamParamSchema.parse(req.params);
       await eventService.deleteTeam(eventId, teamId);
 
       res.json({
@@ -271,7 +279,7 @@ export const adminController = {
   // Create player
   async createPlayer(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const playerData = createPlayerSchema.parse(req.body);
       const result = await eventService.createPlayers(eventId, [playerData]);
       const createdPlayer = result.players?.[0];
@@ -288,7 +296,7 @@ export const adminController = {
   // Update player
   async updatePlayer(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, playerId } = req.params;
+      const { eventId, playerId } = eventPlayerParamSchema.parse(req.params);
       const playerData = updatePlayerSchema.parse(req.body);
       const player = await eventService.updatePlayer(eventId, playerId, playerData);
 
@@ -304,7 +312,7 @@ export const adminController = {
   // Delete player
   async deletePlayer(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, playerId } = req.params;
+      const { eventId, playerId } = eventPlayerParamSchema.parse(req.params);
       await eventService.deletePlayer(eventId, playerId);
 
       res.json({
@@ -319,7 +327,7 @@ export const adminController = {
   // Create auction lot
   async createAuctionLot(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       const lotData = createAuctionLotSchema.parse(req.body);
       const lot = await eventService.createAuctionLot(eventId, lotData);
 
@@ -335,7 +343,7 @@ export const adminController = {
   // Update auction lot
   async updateAuctionLot(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, lotId } = req.params;
+      const { eventId, lotId } = eventLotParamSchema.parse(req.params);
       const lotData = updateAuctionLotSchema.parse(req.body);
       const lot = await eventService.updateAuctionLot(eventId, lotId, lotData);
 
@@ -351,7 +359,7 @@ export const adminController = {
   // Delete auction lot
   async deleteAuctionLot(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId, lotId } = req.params;
+      const { eventId, lotId } = eventLotParamSchema.parse(req.params);
       await eventService.deleteAuctionLot(eventId, lotId);
 
       res.json({
@@ -366,7 +374,7 @@ export const adminController = {
   // Create owners (bulk)
   async createOwners(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       
       // Support both JSON and CSV input
       let owners;
@@ -401,7 +409,7 @@ export const adminController = {
   // Create players (bulk)
   async createPlayers(req: Request, res: Response, next: NextFunction) {
     try {
-      const { eventId } = req.params;
+      const { eventId } = eventIdParamSchema.parse(req.params);
       
       // Support both JSON and CSV input
       let players;
