@@ -14,6 +14,8 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-scan: scan 3s linear infinite;
+  --animate-btn-hover: btn-hover 0.3s ease-out;
+  --animate-btn-press: btn-press 0.15s ease-in-out;
 
   @keyframes glitch {
     0% { transform: translate(0); }
@@ -34,6 +36,14 @@
   @keyframes scan {
     0% { transform: translateY(-100%); }
     100% { transform: translateY(100%); }
+  }
+  @keyframes btn-hover {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.05); }
+  }
+  @keyframes btn-press {
+    0% { transform: scale(1.05); }
+    100% { transform: scale(0.98); }
   }
 }
 
@@ -67,6 +77,18 @@
 /* Button Styles */
 .skew-btn {
   @apply relative inline-block px-8 py-3 bg-primary skew-x-[-20deg] transition-all duration-300;
+  box-shadow: 0 4px 0 rgba(255, 0, 0, 0.5);
+}
+
+.skew-btn:hover {
+  animation: var(--animate-btn-hover);
+  box-shadow: 0 6px 12px rgba(255, 0, 0, 0.4), 0 0 20px rgba(255, 0, 0, 0.3);
+  background-color: #ff3333;
+}
+
+.skew-btn:active {
+  animation: var(--animate-btn-press);
+  box-shadow: 0 2px 4px rgba(255, 0, 0, 0.4);
 }
 
 .skew-btn span {
@@ -83,12 +105,101 @@
   transform: translateX(-101%);
 }
 
+.cyber-btn:hover {
+  animation: var(--animate-btn-hover);
+  @apply text-black;
+  box-shadow: 0 0 20px -5px rgba(255, 0, 0, 0.6);
+}
+
 .cyber-btn:hover::before {
   transform: translateX(0);
 }
 
-.cyber-btn:hover {
-  @apply text-black;
+.cyber-btn:active {
+  animation: var(--animate-btn-press);
+  box-shadow: 0 0 10px -5px rgba(255, 0, 0, 0.4);
+}
+
+/* Standard button styles with hover */
+button {
+  @apply transition-all duration-300;
+}
+
+button:not(:disabled):hover {
+  animation: var(--animate-btn-hover);
+}
+
+button:not(:disabled):active {
+  animation: var(--animate-btn-press);
+}
+
+/* Primary buttons (red background) */
+button[className*="bg-primary"],
+button[className*="border-primary"][className*="text-primary"] {
+  @apply transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,0,0,0.5)];
+}
+
+button[className*="bg-primary"]:hover:not(:disabled) {
+  animation: var(--animate-btn-hover);
+  @apply bg-red-600;
+  box-shadow: 0 0 20px -5px rgba(255, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+button[className*="bg-primary"]:active:not(:disabled) {
+  animation: var(--animate-btn-press);
+  box-shadow: 0 0 10px -5px rgba(255, 0, 0, 0.5);
+}
+
+/* Border-only buttons with primary text */
+button[className*="border-primary"]:not([className*="bg-primary"]):hover:not(:disabled) {
+  animation: var(--animate-btn-hover);
+  @apply border-red-400 text-red-300;
+  box-shadow: 0 0 15px -5px rgba(255, 0, 0, 0.4);
+}
+
+button[className*="border-primary"]:not([className*="bg-primary"]):active:not(:disabled) {
+  animation: var(--animate-btn-press);
+  box-shadow: 0 0 8px -5px rgba(255, 0, 0, 0.3);
+}
+
+/* Red accent buttons */
+button[className*="border-red-500"] {
+  @apply transition-all duration-300;
+}
+
+button[className*="border-red-500"]:hover:not(:disabled) {
+  animation: var(--animate-btn-hover);
+  @apply border-red-400 text-red-200;
+  box-shadow: 0 0 15px -5px rgba(255, 0, 0, 0.5);
+}
+
+button[className*="border-red-500"]:active:not(:disabled) {
+  animation: var(--animate-btn-press);
+  box-shadow: 0 0 8px -5px rgba(255, 0, 0, 0.3);
+}
+
+/* White/gray border buttons */
+button[className*="border-white"],
+button[className*="border-white/"] {
+  @apply transition-all duration-300;
+}
+
+button[className*="border-white"]:hover:not(:disabled),
+button[className*="border-white/"]:hover:not(:disabled) {
+  animation: var(--animate-btn-hover);
+  @apply border-white text-white;
+  box-shadow: 0 0 15px -5px rgba(255, 255, 255, 0.3);
+}
+
+button[className*="border-white"]:active:not(:disabled),
+button[className*="border-white/"]:active:not(:disabled) {
+  animation: var(--animate-btn-press);
+  box-shadow: 0 0 8px -5px rgba(255, 255, 255, 0.2);
+}
+
+/* Disabled button state */
+button:disabled {
+  @apply cursor-not-allowed opacity-50;
 }
 
 /* Glass & Card Styles */
