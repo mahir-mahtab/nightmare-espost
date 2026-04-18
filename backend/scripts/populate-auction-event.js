@@ -11,14 +11,19 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const DEFAULT_PLAYER_BASE_PRICE = 1000;
 
-const toOwnerName = (index) => `Owner ${String(index + 1).padStart(2, '0')}`;
+const toOwnerName = (index) => {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return `Owner ${letters[index % 26]}`;
+};
 const toTeamName = (index) => `Franchise ${String(index + 1).padStart(2, '0')}`;
 
 const ROLES = ['IGL', 'Assaulter', 'Support', 'Sniper', 'Rusher'];
 
 const buildPlayers = (count = 28) => {
+  const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry', 'Iris', 'Jack', 'Karen', 'Liam', 'Mila', 'Noah', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Sam', 'Tessa', 'Uma', 'Victor', 'Wendy', 'Xavier', 'Yara', 'Zoe'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
   return Array.from({ length: count }, (_item, index) => ({
-    name: `Player ${String(index + 1).padStart(2, '0')}`,
+    name: `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`,
     role: ROLES[index % ROLES.length],
     rankPoint: 60 + (index % 41),
     basePrice: DEFAULT_PLAYER_BASE_PRICE,
@@ -37,6 +42,12 @@ const request = async (path, { method = 'GET', body, token } = {}) => {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    console.error(`API Error at ${method} ${path}:`, {
+      status: response.status,
+      message: payload.message,
+      errors: payload.errors,
+      body: body,
+    });
     throw new Error(payload.message || `Request failed: ${path}`);
   }
 
