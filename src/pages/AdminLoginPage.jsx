@@ -17,7 +17,7 @@ const AdminLoginPage = () => {
     setError('');
 
     if (password.trim().length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError('Password must be 6 or more characters.');
       return;
     }
 
@@ -33,14 +33,14 @@ const AdminLoginPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        throw new Error(data.message || 'Login unsuccessful');
       }
 
       // Store admin token
       localStorage.setItem('admin-token', data.data.token);
       navigate('/admin/dashboard');
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Login unsuccessful. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -61,10 +61,10 @@ const AdminLoginPage = () => {
                 <Lock className="h-8 w-8 text-primary" />
               </div>
               <h1 className="font-display text-3xl font-black uppercase text-white">
-                Admin Login
+                Administrator Sign In
               </h1>
               <p className="mt-2 text-sm text-white/60">
-                Enter admin password to access dashboard
+                Enter your administrator password to continue
               </p>
             </div>
 

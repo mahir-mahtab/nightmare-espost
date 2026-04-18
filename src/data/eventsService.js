@@ -44,7 +44,7 @@ const request = async (path, { method = 'GET', body, token } = {}) => {
 
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(formatApiError(payload, 'Request failed'));
+    throw new Error(formatApiError(payload, 'Request could not be completed'));
   }
 
   return payload.data;

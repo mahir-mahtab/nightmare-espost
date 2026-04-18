@@ -113,13 +113,13 @@ const EventSignupPage = () => {
 
     const load = async () => {
       if (!eventId) {
-        setError('Invalid signup link.');
+        setError('This signup link is invalid.');
         setLoading(false);
         return;
       }
 
       if (!signupType) {
-        setError('Invalid signup type. Use owner or player links only.');
+        setError('This signup link supports owner or player registration only.');
         setLoading(false);
         return;
       }
@@ -133,7 +133,7 @@ const EventSignupPage = () => {
         setError('');
       } catch (loadError) {
         if (mounted) {
-          setError(loadError.message || 'Failed to load signup page');
+          setError(loadError.message || 'Unable to load signup page');
         }
       } finally {
         if (mounted) {
@@ -171,7 +171,7 @@ const EventSignupPage = () => {
         coinsLeft: Number(ownerForm.coinsLeft),
       });
 
-      setSuccess('Owner and team signup completed successfully. You can now login as owner.');
+      setSuccess('Owner and team registration completed. You can now sign in as owner.');
       setOwnerForm({
         eventPassword: '',
         ownerName: '',
@@ -181,7 +181,7 @@ const EventSignupPage = () => {
         coinsLeft: 0,
       });
     } catch (submitError) {
-      setError(submitError.message || 'Owner signup failed');
+      setError(submitError.message || 'Owner signup could not be completed');
     } finally {
       setSubmitting(false);
     }
@@ -209,7 +209,7 @@ const EventSignupPage = () => {
         imageUrl: toTrimmed(playerForm.imageUrl) || undefined,
       });
 
-      setSuccess('Player signup completed successfully.');
+      setSuccess('Player registration completed successfully.');
       setPlayerForm({
         eventPassword: '',
         playerName: '',
@@ -219,7 +219,7 @@ const EventSignupPage = () => {
         imageUrl: '',
       });
     } catch (submitError) {
-      setError(submitError.message || 'Player signup failed');
+      setError(submitError.message || 'Player signup could not be completed');
     } finally {
       setSubmitting(false);
     }
@@ -233,7 +233,7 @@ const EventSignupPage = () => {
     >
       <section className="mx-auto max-w-3xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         {loading ? (
-          <CyberCard className="border border-white/15 bg-black/60 p-6 text-sm text-white/70">Loading signup context...</CyberCard>
+          <CyberCard className="border border-white/15 bg-black/60 p-6 text-sm text-white/70">Preparing signup form...</CyberCard>
         ) : error && !summary ? (
           <CyberCard className="border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-200">{error}</CyberCard>
         ) : (
@@ -241,7 +241,7 @@ const EventSignupPage = () => {
             <div className="mb-6 border-b border-white/10 pb-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">Restricted Link</p>
               <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.08em] text-white">{summary?.title || 'Event'}</h2>
-              <p className="mt-1 text-xs text-white/60">{signupType === 'owner' ? 'Owner Signup' : 'Player Signup'} • {summary?.game || 'Game'}{summary?.season ? ` • ${summary.season}` : ''}</p>
+              <p className="mt-1 text-xs text-white/60">{signupType === 'owner' ? 'Owner Signup' : 'Player Signup'} | {summary?.game || 'Game'}{summary?.season ? ` | ${summary.season}` : ''}</p>
             </div>
 
             {error && (

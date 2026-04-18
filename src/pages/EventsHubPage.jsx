@@ -19,7 +19,7 @@ const EventsHubPage = () => {
         const payload = await eventsService.listPublicEvents();
         setEvents(payload || []);
       } catch (loadError) {
-        setError(loadError.message || 'Unable to load event details');
+        setError(loadError.message || 'Unable to load events');
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,7 @@ const EventsHubPage = () => {
         <div className="mx-auto max-w-7xl space-y-5">
           {loading && (
             <CyberCard className="p-8">
-              <p className="font-display text-2xl font-black uppercase text-white">Loading Events...</p>
+              <p className="font-display text-2xl font-black uppercase text-white">Loading events...</p>
             </CyberCard>
           )}
 
@@ -67,7 +67,7 @@ const EventsHubPage = () => {
 
           {!loading && events.length === 0 && !error && (
             <CyberCard className="p-6">
-              <p className="text-sm text-white/60">No public events available right now.</p>
+              <p className="text-sm text-white/60">No events are currently available.</p>
             </CyberCard>
           )}
 

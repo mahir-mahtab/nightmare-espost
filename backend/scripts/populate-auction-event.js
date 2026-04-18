@@ -9,6 +9,7 @@
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const DEFAULT_PLAYER_BASE_PRICE = 1000;
 
 const toOwnerName = (index) => `Owner ${String(index + 1).padStart(2, '0')}`;
 const toTeamName = (index) => `Franchise ${String(index + 1).padStart(2, '0')}`;
@@ -20,7 +21,7 @@ const buildPlayers = (count = 28) => {
     name: `Player ${String(index + 1).padStart(2, '0')}`,
     role: ROLES[index % ROLES.length],
     rankPoint: 60 + (index % 41),
-    basePrice: 800 + (index * 50),
+    basePrice: DEFAULT_PLAYER_BASE_PRICE,
   }));
 };
 
@@ -69,41 +70,41 @@ async function run() {
     },
   });
 
-  const ownersPayload = Array.from({ length: 14 }, (_item, index) => ({
-    name: toOwnerName(index),
-    password: `owner${String(index + 1).padStart(2, '0')}123`,
-  }));
-
-  const owners = await request(`/api/admin/events/${event.id}/owners`, {
-    method: 'POST',
-    token: adminToken,
-    body: ownersPayload,
-  });
-
-  const teamsPayload = owners.map((owner, index) => ({
-    name: toTeamName(index),
-    ownerId: owner.id,
-    coinsLeft: 25000,
-  }));
-
-  await request(`/api/admin/events/${event.id}/teams`, {
-    method: 'POST',
-    token: adminToken,
-    body: teamsPayload,
-  });
+  // Create owners + teams through event signup flow so each request includes event password.
+  for (let index = 0; index < 14; index += 1) {
+    await request(`/api/events/${event.id}/signup/owner`, {
+      method: 'POST',
+      body: {
+        eventPassword,
+        ownerName: toOwnerName(index),
+        ownerPassword: `owner${String(index + 1).padStart(2, '0')}123`,
+        teamName: toTeamName(index),
+        coinsLeft: 25000,
+      },
+    });
+  }
 
   const playersPayload = buildPlayers(30);
 
-  await request(`/api/admin/events/${event.id}/players`, {
-    method: 'POST',
-    token: adminToken,
-    body: playersPayload,
-  });
+  // Create players through event signup flow so each request includes event password.
+  for (const player of playersPayload) {
+    await request(`/api/events/${event.id}/signup/player`, {
+      method: 'POST',
+      body: {
+        eventPassword,
+        playerName: player.name,
+        playerRole: player.role,
+        rankPoint: player.rankPoint,
+        basePrice: player.basePrice,
+      },
+    });
+  }
 
   console.log('✅ Auction test event created successfully');
   console.log(`Event ID: ${event.id}`);
   console.log(`Event Slug: ${event.slug}`);
   console.log(`Event Password: ${eventPassword}`);
+  console.log(`Default Player Base Price: ${DEFAULT_PLAYER_BASE_PRICE}`);
   console.log('Owners created: 14');
   console.log('Players created: 30');
   console.log('Teams created: 14');

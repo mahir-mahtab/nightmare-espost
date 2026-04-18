@@ -105,7 +105,7 @@ const EventCard = ({ summary, auctionLots }) => {
             <div className="mt-6 md:mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="border border-white/10 bg-black/70 p-4">
                 <p className="text-[10px] font-bold tracking-[0.24em] text-white/40 uppercase">Match Type</p>
-                <p className="mt-2 text-base md:text-lg font-bold text-white">{summary.game} • {summary.mode}</p>
+                <p className="mt-2 text-base md:text-lg font-bold text-white">{summary.game} | {summary.mode}</p>
               </div>
               <div className="border border-white/10 bg-black/70 p-4">
                 <p className="text-[10px] font-bold tracking-[0.24em] text-white/40 uppercase">Stream Starts</p>
@@ -404,7 +404,7 @@ const AuctionHub = ({
                   <Timer className="h-4 w-4 text-primary" />
                   {String(selectedAuction?.timeLeft || 0).padStart(2, '0')} SEC
                 </div>
-                {!canBid && <p className="text-[11px] text-amber-300">Guest mode active. Only owner sessions can place bids.</p>}
+                {!canBid && <p className="text-[11px] text-amber-300">Viewing mode active. Sign in as owner to place bids.</p>}
               </div>
             </div>
 
@@ -507,7 +507,7 @@ const AuctionStateList = ({
         <div className="max-h-[62vh] overflow-y-auto">
           {loading && (
             <div className="border-b border-white/8 px-4 py-4 text-sm text-white/70">
-              Loading auction state...
+              Fetching auction status...
             </div>
           )}
 
@@ -708,7 +708,7 @@ const EventsPage = () => {
       setSelectedAuctionId(auctionPayload.activeAuctionId);
       setBidAmount(String((auctionPayload.lots || []).find((lot) => lot.id === auctionPayload.activeAuctionId)?.currentBid || auctionPayload.lots?.[0]?.currentBid || 0));
     } catch (loadError) {
-      setError(loadError.message || 'Failed to load event data');
+      setError(loadError.message || 'Unable to load event data');
     } finally {
       setLoading(false);
     }
@@ -751,7 +751,7 @@ const EventsPage = () => {
         });
         setPlayers(filteredPlayers);
       } catch (filterError) {
-        setError(filterError.message || 'Failed to filter players');
+        setError(filterError.message || 'Unable to filter players');
       }
     }, 180);
 
@@ -777,7 +777,7 @@ const EventsPage = () => {
         }
       } catch (filterError) {
         if (isMounted) {
-          setError(filterError.message || 'Failed to load auction state');
+          setError(filterError.message || 'Unable to load auction state');
         }
       } finally {
         if (isMounted) {
@@ -989,7 +989,7 @@ const EventsPage = () => {
     });
 
     socket.on('auction_error', (payload) => {
-      setError(payload?.message || 'Auction socket error');
+      setError(payload?.message || 'Connection to the live auction was interrupted');
     });
 
     return () => {
@@ -1258,14 +1258,14 @@ const EventsPage = () => {
   if (loading) {
     return (
       <PageShell
-        subtitle="Preparing your event panel..."
+        subtitle="Preparing your event experience..."
         accent="Event Management"
         subHeader={<EventSubNav eventId={eventId} />}
       >
         <section className="px-4 pb-12 sm:px-5 lg:px-6">
           <div className="mx-auto max-w-7xl">
             <CyberCard className="p-6 md:p-8">
-              <p className="font-display text-xl md:text-2xl font-black uppercase text-white">Loading Event Data...</p>
+              <p className="font-display text-xl md:text-2xl font-black uppercase text-white">Loading event details...</p>
             </CyberCard>
           </div>
         </section>
@@ -1288,10 +1288,10 @@ const EventsPage = () => {
           {/* Session Info Bar */}
           <div className={`${isAuctionViewportTab ? 'mb-3 p-2.5 md:p-3' : 'mb-6 p-3 md:p-4'} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-white/12 bg-black/35 rounded-lg`}>
             <div className="text-[11px] md:text-xs font-bold tracking-[0.16em] text-white/70 uppercase">
-              Current Session: {session?.displayName || 'Guest'} • {session?.role === 'owner' ? 'Owner' : 'Guest'}
+              Current Session: {session?.displayName || 'Guest'} | {session?.role === 'owner' ? 'Owner' : 'Guest'}
             </div>
             <div className={`text-[10px] font-bold tracking-[0.16em] uppercase ${socketConnected ? 'text-green-300' : 'text-yellow-300'}`}>
-              Socket: {socketConnected ? 'Live' : 'Reconnecting'}
+              Connection: {socketConnected ? 'Live' : 'Reconnecting'}
             </div>
             <Motion.button
               whileHover={{ scale: 1.05 }}

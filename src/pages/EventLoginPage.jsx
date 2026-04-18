@@ -38,7 +38,7 @@ const EventLoginPage = () => {
         setOwners(ownerPayload);
         setOwnerId(ownerPayload[0]?.id || '');
       } catch (loadError) {
-        setError(loadError.message || 'Failed to prepare event login');
+        setError(loadError.message || 'Unable to prepare event login');
       } finally {
         setLoading(false);
       }
@@ -70,20 +70,20 @@ const EventLoginPage = () => {
       await login({ eventId, password, role, ownerId, ownerPassword });
       navigate(`/events/${eventId}/auction`, { replace: true });
     } catch (submitError) {
-      setError(submitError.message || 'Login failed');
+      setError(submitError.message || 'Login unsuccessful');
     }
   };
 
   return (
     <PageShell
       title="Event Login"
-      subtitle="Event password is required. Owner login can bid; guest login is read-only."
+      subtitle="Enter the event password. Owners can bid; guests can follow live activity."
       accent="Secure Access"
     >
       <section className="px-6 pb-20">
         <div className="mx-auto max-w-3xl">
           <CyberCard className="p-6 sm:p-8">
-            {loading && <p className="text-sm text-white/70">Preparing login...</p>}
+            {loading && <p className="text-sm text-white/70">Loading event access...</p>}
 
             {!loading && (
               <>
@@ -104,7 +104,7 @@ const EventLoginPage = () => {
                       }`}
                     >
                       <Users className="h-4 w-4" />
-                      Guest Mode
+                      Guest Access
                     </button>
                     <button
                       type="button"
@@ -116,7 +116,7 @@ const EventLoginPage = () => {
                       }`}
                     >
                       <User className="h-4 w-4" />
-                      Owner Mode
+                      Owner Access
                     </button>
                   </div>
 
@@ -175,7 +175,7 @@ const EventLoginPage = () => {
                       type="submit"
                       className="border border-primary/60 bg-primary/20 px-4 py-2 text-[11px] font-bold tracking-[0.2em] text-primary uppercase"
                     >
-                      {role === 'owner' ? 'Login As Owner' : 'Continue As Guest'}
+                      {role === 'owner' ? 'Sign In as Owner' : 'Continue as Guest'}
                     </button>
                   </div>
                 </form>

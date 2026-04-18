@@ -235,7 +235,7 @@ const AdminDashboard = () => {
           navigate('/admin/login');
           return;
         }
-        throw new Error(apiErrorMessage(payload, 'Failed to fetch events'));
+        throw new Error(apiErrorMessage(payload, 'Unable to load events'));
       }
 
       const list = payload.data || [];
@@ -245,7 +245,7 @@ const AdminDashboard = () => {
         setSelectedEventId(list[0].id);
       }
     } catch (fetchError) {
-      setError(fetchError.message || 'Failed to fetch events');
+      setError(fetchError.message || 'Unable to load events');
     } finally {
       setLoadingEvents(false);
     }
@@ -273,12 +273,12 @@ const AdminDashboard = () => {
           navigate('/admin/login');
           return;
         }
-        throw new Error(apiErrorMessage(payload, 'Failed to load event workspace'));
+        throw new Error(apiErrorMessage(payload, 'Unable to load event details'));
       }
 
       setEventData(payload.data);
     } catch (fetchError) {
-      setError(fetchError.message || 'Failed to load event workspace');
+      setError(fetchError.message || 'Unable to load event details');
     } finally {
       setLoadingEventData(false);
     }
@@ -341,7 +341,7 @@ const AdminDashboard = () => {
     });
 
     socket.on('auction_error', (payload) => {
-      setError(payload?.message || 'Admin socket error');
+      setError(payload?.message || 'Live connection interrupted');
     });
 
     return () => {
@@ -359,7 +359,7 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteEvent = async (eventId) => {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+    if (!confirm('Delete this event permanently? This action cannot be undone.')) {
       return;
     }
 
@@ -375,7 +375,7 @@ const AdminDashboard = () => {
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to delete event'));
+        throw new Error(apiErrorMessage(payload, 'Unable to delete event'));
       }
 
       setMessage('Event deleted successfully');
@@ -385,7 +385,7 @@ const AdminDashboard = () => {
       }
       fetchEvents();
     } catch (deleteError) {
-      setError(deleteError.message || 'Failed to delete event');
+      setError(deleteError.message || 'Unable to delete event');
     }
   };
 
@@ -396,11 +396,11 @@ const AdminDashboard = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="font-display text-4xl font-black uppercase text-white md:text-5xl">Admin Dashboard</h1>
-              <p className="mt-2 text-sm text-white/60">Per-event workspace with dedicated controls</p>
+              <p className="mt-2 text-sm text-white/60">Manage event operations and live auction controls</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className={`rounded border px-3 py-2 text-[10px] font-bold tracking-[0.16em] uppercase ${socketConnected ? 'border-green-400/50 bg-green-500/10 text-green-300' : 'border-yellow-400/50 bg-yellow-500/10 text-yellow-300'}`}>
-                Socket: {socketConnected ? 'Live' : 'Reconnecting'}
+                Connection: {socketConnected ? 'Live' : 'Reconnecting'}
               </div>
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -450,7 +450,7 @@ const AdminDashboard = () => {
               {loadingEvents ? (
                 <p className="text-sm text-white/60">Loading events...</p>
               ) : events.length === 0 ? (
-                <p className="text-sm text-white/60">No events created yet.</p>
+                <p className="text-sm text-white/60">No events available yet.</p>
               ) : (
                 <div className="space-y-2">
                   {events.map((evt) => (
@@ -473,18 +473,18 @@ const AdminDashboard = () => {
 
             <CyberCard className="p-4 md:p-6">
               {!selectedEvent ? (
-                <p className="text-sm text-white/60">Select an event to open its admin workspace.</p>
+                <p className="text-sm text-white/60">Select an event to open its admin panel.</p>
               ) : loadingEventData || !eventData ? (
-                <p className="text-sm text-white/60">Loading event workspace...</p>
+                <p className="text-sm text-white/60">Loading event details...</p>
               ) : (
                 <>
                   <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h2 className="font-display text-3xl font-black uppercase text-white">{eventData.title}</h2>
-                      <p className="mt-1 text-xs text-white/60">/{eventData.slug} • {eventData.status}</p>
+                      <p className="mt-1 text-xs text-white/60">/{eventData.slug} | {eventData.status}</p>
                       {liveAuctionState && (
                         <p className="mt-1 text-[11px] text-primary/80">
-                          Live Auction: {liveAuctionState.activeLotId ? `Lot ${liveAuctionState.activeLotId}` : 'No active lot'} • Time Left: {Number(liveAuctionState.timeLeft || 0)}s
+                          Live Auction: {liveAuctionState.activeLotId ? `Lot ${liveAuctionState.activeLotId}` : 'No active lot'} | Time Left: {Number(liveAuctionState.timeLeft || 0)}s
                         </p>
                       )}
                     </div>
@@ -720,12 +720,12 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(result, 'Failed to update event'));
+        throw new Error(apiErrorMessage(result, 'Unable to update event'));
       }
 
       onSaved('Event updated successfully');
     } catch (saveError) {
-      onError(saveError.message || 'Failed to update event');
+      onError(saveError.message || 'Unable to update event');
     } finally {
       setSaving(false);
     }
@@ -813,12 +813,12 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to create owner'));
+        throw new Error(apiErrorMessage(payload, 'Unable to create owner'));
       }
       setCreateForm({ name: '', password: '', avatarUrl: '' });
       onChanged('Owner created successfully');
     } catch (err) {
-      onError(err.message || 'Failed to create owner');
+      onError(err.message || 'Unable to create owner');
     } finally {
       setCreating(false);
     }
@@ -853,12 +853,12 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to update owner'));
+        throw new Error(apiErrorMessage(payload, 'Unable to update owner'));
       }
       setEditingId('');
       onChanged('Owner updated successfully');
     } catch (err) {
-      onError(err.message || 'Failed to update owner');
+      onError(err.message || 'Unable to update owner');
     }
   };
 
@@ -875,11 +875,11 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to delete owner'));
+        throw new Error(apiErrorMessage(payload, 'Unable to delete owner'));
       }
       onChanged('Owner deleted successfully');
     } catch (err) {
-      onError(err.message || 'Failed to delete owner');
+      onError(err.message || 'Unable to delete owner');
     }
   };
 
@@ -936,7 +936,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
               placeholder="Leave blank to keep"
               className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary"
             />
-          ) : '••••••••',
+          ) : '********',
           editingId === owner.id ? (
             <input
               value={editForm.avatarUrl}
@@ -999,12 +999,12 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to create team'));
+        throw new Error(apiErrorMessage(payload, 'Unable to create team'));
       }
       setCreateForm({ name: '', ownerId: owners[0]?.id || '', coinsLeft: 0 });
       onChanged('Team created successfully');
     } catch (err) {
-      onError(err.message || 'Failed to create team');
+      onError(err.message || 'Unable to create team');
     } finally {
       setCreating(false);
     }
@@ -1043,12 +1043,12 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to update team'));
+        throw new Error(apiErrorMessage(payload, 'Unable to update team'));
       }
       setEditingId('');
       onChanged('Team updated successfully');
     } catch (err) {
-      onError(err.message || 'Failed to update team');
+      onError(err.message || 'Unable to update team');
     }
   };
 
@@ -1064,11 +1064,11 @@ const TeamsTab = ({ teams, owners, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to delete team'));
+        throw new Error(apiErrorMessage(payload, 'Unable to delete team'));
       }
       onChanged('Team deleted successfully');
     } catch (err) {
-      onError(err.message || 'Failed to delete team');
+      onError(err.message || 'Unable to delete team');
     }
   };
 
@@ -1192,12 +1192,12 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to create player'));
+        throw new Error(apiErrorMessage(payload, 'Unable to create player'));
       }
       setCreateForm({ name: '', role: '', rankPoint: 0, basePrice: 0, imageUrl: '' });
       onChanged('Player created successfully');
     } catch (err) {
-      onError(err.message || 'Failed to create player');
+      onError(err.message || 'Unable to create player');
     } finally {
       setCreating(false);
     }
@@ -1246,12 +1246,12 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to update player'));
+        throw new Error(apiErrorMessage(payload, 'Unable to update player'));
       }
       setEditingId('');
       onChanged('Player updated successfully');
     } catch (err) {
-      onError(err.message || 'Failed to update player');
+      onError(err.message || 'Unable to update player');
     }
   };
 
@@ -1267,11 +1267,11 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to delete player'));
+        throw new Error(apiErrorMessage(payload, 'Unable to delete player'));
       }
       onChanged('Player deleted successfully');
     } catch (err) {
-      onError(err.message || 'Failed to delete player');
+      onError(err.message || 'Unable to delete player');
     }
   };
 
@@ -1429,7 +1429,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to create auction lot'));
+        throw new Error(apiErrorMessage(payload, 'Unable to create auction lot'));
       }
       setCreateForm({
         playerId: players[0]?.id || '',
@@ -1439,7 +1439,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
       });
       onChanged('Auction lot created successfully');
     } catch (err) {
-      onError(err.message || 'Failed to create auction lot');
+      onError(err.message || 'Unable to create auction lot');
     } finally {
       setCreating(false);
     }
@@ -1480,12 +1480,12 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to update auction lot'));
+        throw new Error(apiErrorMessage(payload, 'Unable to update auction lot'));
       }
       setEditingId('');
       onChanged('Auction lot updated successfully');
     } catch (err) {
-      onError(err.message || 'Failed to update auction lot');
+      onError(err.message || 'Unable to update auction lot');
     }
   };
 
@@ -1501,11 +1501,11 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to delete auction lot'));
+        throw new Error(apiErrorMessage(payload, 'Unable to delete auction lot'));
       }
       onChanged('Auction lot deleted successfully');
     } catch (err) {
-      onError(err.message || 'Failed to delete auction lot');
+      onError(err.message || 'Unable to delete auction lot');
     }
   };
 
@@ -1523,11 +1523,11 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Auction action failed'));
+        throw new Error(apiErrorMessage(payload, 'Auction action could not be completed'));
       }
       onChanged(successMessage);
     } catch (err) {
-      onError(err.message || 'Auction action failed');
+      onError(err.message || 'Auction action could not be completed');
     } finally {
       setAuctionBusy(false);
     }
@@ -1549,13 +1549,13 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to update runtime settings'));
+        throw new Error(apiErrorMessage(payload, 'Unable to update runtime settings'));
       }
 
       setAutoProgress(nextValue);
       onChanged(`Auto progress ${nextValue ? 'enabled' : 'disabled'}`);
     } catch (err) {
-      onError(err.message || 'Failed to update runtime settings');
+      onError(err.message || 'Unable to update runtime settings');
     } finally {
       setAuctionBusy(false);
     }
@@ -1577,12 +1577,12 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to extend active lot timer'));
+        throw new Error(apiErrorMessage(payload, 'Unable to extend active lot timer'));
       }
 
       onChanged(`Active lot timer extended by ${Number(extendSeconds)}s`);
     } catch (err) {
-      onError(err.message || 'Failed to extend active lot timer');
+      onError(err.message || 'Unable to extend active lot timer');
     } finally {
       setAuctionBusy(false);
     }
@@ -1590,12 +1590,12 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
   const handleFinalizeSold = async () => {
     if (!controlLotId) {
-      onError('Select a lot first');
+      onError('Please select a lot first');
       return;
     }
 
     if (!controlOwnerId) {
-      onError('Select winning owner');
+      onError('Please select the winning owner');
       return;
     }
 
@@ -1680,7 +1680,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
   const handleResetToPending = async () => {
     if (!selectedLot) {
-      onError('Select a lot first');
+      onError('Please select a lot first');
       return;
     }
 
@@ -1700,12 +1700,12 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, 'Failed to reset selected lot'));
+        throw new Error(apiErrorMessage(payload, 'Unable to reset selected lot'));
       }
 
       onChanged('Selected lot reset to pending state for re-auction');
     } catch (err) {
-      onError(err.message || 'Failed to reset selected lot');
+      onError(err.message || 'Unable to reset selected lot');
     } finally {
       setAuctionBusy(false);
     }
@@ -2178,12 +2178,12 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(apiErrorMessage(result, 'Failed to create event'));
+        throw new Error(apiErrorMessage(result, 'Unable to create event'));
       }
 
       onSuccess(result.data?.id);
     } catch (createError) {
-      onError(createError.message || 'Failed to create event');
+      onError(createError.message || 'Unable to create event');
     } finally {
       setLoading(false);
     }

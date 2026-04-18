@@ -92,23 +92,23 @@ export const eventAuthService = {
 
   async login({ eventId, password, role, ownerId = '', ownerPassword = '' }) {
     if (!eventId) {
-      throw new Error('Event ID is required');
+      throw new Error('Event identifier is required');
     }
 
     if (!password?.trim()) {
-      throw new Error('Event password is required');
+      throw new Error('Please enter the event password');
     }
 
     if (!['owner', 'guest'].includes(role)) {
-      throw new Error('Invalid role');
+      throw new Error('Invalid account type');
     }
 
     if (role === 'owner' && !ownerId) {
-      throw new Error('Owner selection is required');
+      throw new Error('Please select an owner account');
     }
 
     if (role === 'owner' && !ownerPassword?.trim()) {
-      throw new Error('Owner password is required');
+      throw new Error('Please enter the owner password');
     }
 
     const response = await fetch(`${config.apiUrl}/events/${eventId}/auth/login`, {
@@ -124,12 +124,12 @@ export const eventAuthService = {
 
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(formatApiError(payload, 'Login failed'));
+      throw new Error(formatApiError(payload, 'Login unsuccessful'));
     }
 
     const sessionToken = payload?.data?.sessionToken;
     if (!sessionToken) {
-      throw new Error('Session token missing from login response');
+      throw new Error('Session could not be established. Please try again.');
     }
 
     const expiresAt = decodeJwtExp(sessionToken) || Date.now() + (1000 * 60 * 60 * 8);
