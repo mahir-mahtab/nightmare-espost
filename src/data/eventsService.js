@@ -50,6 +50,25 @@ const request = async (path, { method = 'GET', body, token } = {}) => {
   return payload.data;
 };
 
+const buildAuctionBoardQuery = (filters = {}) => {
+  const searchParams = new URLSearchParams();
+
+  if (filters.search) {
+    searchParams.set('search', String(filters.search).trim());
+  }
+
+  if (filters.status && filters.status !== 'all') {
+    searchParams.set('status', String(filters.status).toUpperCase());
+  }
+
+  if (filters.ownerName) {
+    searchParams.set('ownerName', String(filters.ownerName).trim());
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+};
+
 const mapSummary = (summary) => ({
   id: summary.id,
   title: summary.title,
@@ -110,6 +129,8 @@ const mapAuctionBoard = (board, players, owners) => {
       timeLeft: lot.timeLeft,
       lotOrder: lot.lotOrder,
       playerName: lot.playerName || playerById[lot.playerId]?.name,
+      playerRole: lot.playerRole || playerById[lot.playerId]?.role || '-',
+      playerImageUrl: lot.playerImageUrl || playerById[lot.playerId]?.image || '',
       ownerName: lot.currentOwnerName || ownerById[lot.currentOwnerId]?.name,
     })),
   };
@@ -189,9 +210,11 @@ export const eventsService = {
     return data.map(mapOwner);
   },
 
-  async getAuctionBoard(eventId, sessionToken) {
+  async getAuctionBoard(eventId, sessionToken, filters = {}) {
+    const boardQuery = buildAuctionBoardQuery(filters);
+
     const [board, players, owners] = await Promise.all([
-      request(`/events/${eventId}/auction`, { token: sessionToken }),
+      request(`/events/${eventId}/auction${boardQuery}`, { token: sessionToken }),
       request(`/events/${eventId}/players`, { token: sessionToken }),
       request(`/events/${eventId}/owners`, { token: sessionToken }),
     ]);

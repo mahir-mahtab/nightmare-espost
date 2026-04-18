@@ -1,2 +1,3 @@
 postgres://postgres:Jm0tm1mq15hFCGYT819HT4lJ2qmugsDSlIFJbrYS1wv2PCeKFbKkgULRwNKEZGks@qhxwv0rlx4zn7qfs3admd0v0:5432/postgres
 
+redis://default:UKNNxt7F57pUGwfEqZOlhJGiWylpg8BrKfL11PelMOYz7XfNYkuLEk7nxFDSQrml@a9ipvguem2p5hhope9nsds9w:6379/0

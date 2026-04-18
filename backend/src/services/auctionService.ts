@@ -26,6 +26,12 @@ interface AuctionRuntimeState {
   liveBids: Record<string, LiveBidSnapshot>;
 }
 
+interface AuctionBoardFilters {
+  search?: string;
+  status?: AuctionStatus | string;
+  ownerName?: string;
+}
+
 const computeTimeLeft = (activeLotEndsAt: number | null) => {
   if (!activeLotEndsAt) {
     return 0;
@@ -87,6 +93,8 @@ const toBoardLot = (lot: any, runtime: AuctionRuntimeState, ownerNameById: Recor
       id: lot.id,
       playerId: lot.playerId,
       playerName: lot.player?.name,
+      playerRole: lot.player?.role,
+      playerImageUrl: lot.player?.imageUrl,
       currentBid: lot.player?.finalPrice ?? lot.player?.basePrice ?? 0,
       currentOwnerId: finalOwnerId,
       currentOwnerName: finalOwnerId ? (ownerNameById[finalOwnerId] || null) : null,
@@ -101,6 +109,8 @@ const toBoardLot = (lot: any, runtime: AuctionRuntimeState, ownerNameById: Recor
     id: lot.id,
     playerId: lot.playerId,
     playerName: lot.player?.name,
+    playerRole: lot.player?.role,
+    playerImageUrl: lot.player?.imageUrl,
     currentBid: liveBid?.amount ?? lot.player?.basePrice ?? 0,
     currentOwnerId: liveBid?.ownerId ?? null,
     currentOwnerName: liveBid?.ownerId ? (ownerNameById[liveBid.ownerId] || null) : null,
@@ -148,7 +158,7 @@ export const auctionService = {
     });
   },
 
-  async getAuctionState(eventIdOrSlug: string) {
+  async getAuctionState(eventIdOrSlug: string, filters: AuctionBoardFilters = {}) {
     const event = await eventService.getEvent(eventIdOrSlug);
     const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
 
@@ -181,6 +191,27 @@ export const auctionService = {
 
     const ownerNameById = Object.fromEntries(owners.map((owner) => [owner.id, owner.name]));
 
+    const normalizedSearch = filters.search?.trim().toLowerCase() || '';
+    const normalizedOwnerName = filters.ownerName?.trim().toLowerCase() || '';
+    const normalizedStatus = filters.status ? String(filters.status).toUpperCase() : '';
+
+    const boardLots = lots.map((lot) => toBoardLot(lot, runtime, ownerNameById));
+    const filteredLots = boardLots.filter((lot) => {
+      if (normalizedSearch && !String(lot.playerName || '').toLowerCase().includes(normalizedSearch)) {
+        return false;
+      }
+
+      if (normalizedStatus && String(lot.status || '').toUpperCase() !== normalizedStatus) {
+        return false;
+      }
+
+      if (normalizedOwnerName && !String(lot.currentOwnerName || '').toLowerCase().includes(normalizedOwnerName)) {
+        return false;
+      }
+
+      return true;
+    });
+
     return {
       eventId: event.id,
       activeLotId: runtime.activeLotId,
@@ -189,7 +220,7 @@ export const auctionService = {
       lotDuration: runtime.lotDuration,
       activeLotEndsAt: runtime.activeLotEndsAt,
       timeLeft: computeTimeLeft(runtime.activeLotEndsAt),
-      lots: lots.map((lot) => toBoardLot(lot, runtime, ownerNameById)),
+      lots: filteredLots,
     };
   },
 

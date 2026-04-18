@@ -176,3 +176,9 @@ export const playersQuerySchema = z.object({
   role: z.string().trim().min(1).max(50).optional(),
   status: z.enum(['ACTIVE', 'SOLD', 'UNSOLD']).optional(),
 });
+
+export const auctionQuerySchema = z.object({
+  search: z.string().trim().min(1).max(100).optional(),
+  status: z.enum(['PENDING', 'ACTIVE', 'SOLD', 'UNSOLD']).optional(),
+  ownerName: z.string().trim().min(1).max(100).optional(),
+});

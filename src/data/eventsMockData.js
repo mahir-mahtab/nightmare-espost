@@ -3,7 +3,7 @@ export const EVENT_ROUTE_TABS = [
   { id: 'team', label: 'Teams', path: '/events/team' },
   { id: 'players', label: 'Available', path: '/events/players' },
   { id: 'auction', label: 'Selection', path: '/events/auction', badge: 'Live' },
-  { id: 'players-buy', label: 'Purchase', path: '/events/players-buy' },
+  { id: 'auction-state', label: 'Auction State', path: '/events/auction-state' },
 ];
 
 export const EVENT_SUMMARY = {

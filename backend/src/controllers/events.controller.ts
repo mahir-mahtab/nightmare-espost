@@ -10,6 +10,7 @@ import {
   playerSignupSchema,
   eventIdParamSchema,
   playersQuerySchema,
+  auctionQuerySchema,
 } from '../utils/validators.js';
 
 export const eventsController = {
@@ -323,7 +324,17 @@ export const eventsController = {
   async getAuctionBoard(req: Request, res: Response, next: NextFunction) {
     try {
       const { eventId } = eventIdParamSchema.parse(req.params);
-      const auctionState = await auctionService.getAuctionState(eventId);
+      const query = auctionQuerySchema.parse({
+        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        status: typeof req.query.status === 'string' ? String(req.query.status).toUpperCase() : undefined,
+        ownerName: typeof req.query.ownerName === 'string' ? req.query.ownerName : undefined,
+      });
+
+      const auctionState = await auctionService.getAuctionState(eventId, {
+        search: query.search,
+        status: query.status,
+        ownerName: query.ownerName,
+      });
 
       res.json({
         success: true,

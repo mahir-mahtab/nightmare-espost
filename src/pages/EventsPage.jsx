@@ -30,6 +30,21 @@ const FILTER_STATES = [
   { value: 'unsold', label: 'Unsold' },
 ];
 
+const AUCTION_FILTER_STATES = [
+  { value: 'all', label: 'All Status' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'active', label: 'Active' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'unsold', label: 'Unsold' },
+];
+
+const LOT_STATUS_STYLES = {
+  pending: 'border-white/25 bg-white/10 text-white/80',
+  active: 'border-amber-300/60 bg-amber-300/20 text-amber-200',
+  sold: 'border-emerald-300/60 bg-emerald-400/20 text-emerald-200',
+  unsold: 'border-rose-400/60 bg-rose-500/20 text-rose-200',
+};
+
 // Dynamic page title component based on context
 const ContextualPageTitle = ({ activeTab, summary, auction, compact = false }) => {
   const getTitleConfig = () => {
@@ -42,8 +57,8 @@ const ContextualPageTitle = ({ activeTab, summary, auction, compact = false }) =
         return { title: 'Available Players', subtitle: `${auction?.lots?.length || 0} Players Available` };
       case 'auction':
         return { title: 'Live Selection', subtitle: 'NOW LIVE' };
-      case 'players-buy':
-        return { title: 'Purchase', subtitle: 'Player Selection' };
+      case 'auction-state':
+        return { title: 'Auction State', subtitle: 'Search Lot Status' };
       default:
         return { title: 'Events', subtitle: 'Event Management' };
     }
@@ -208,21 +223,35 @@ const AuctionLotTile = ({ lot, player, isActive, onSelect }) => {
     return null;
   }
 
+  const lotStatus = String(lot.status || 'pending').toLowerCase();
+  const lotStatusStyle = LOT_STATUS_STYLES[lotStatus] || LOT_STATUS_STYLES.pending;
+  const playerImage = lot.playerImageUrl || player.image;
+  const playerRole = lot.playerRole || player.role || '-';
+
   return (
     <button
       type="button"
       onClick={() => onSelect(lot.id)}
-      className={`group relative w-full overflow-hidden rounded-xl border p-1.5 text-left transition-all ${
-        isActive ? 'border-primary/75 bg-primary/12' : 'border-white/15 bg-black/45 hover:border-primary/45'
+      className={`group relative w-full overflow-hidden rounded-xl border p-2 text-left transition-all ${
+        isActive ? 'border-primary/75 bg-primary/14' : 'border-white/15 bg-black/45 hover:border-primary/45'
       }`}
     >
-      <div className="relative overflow-hidden rounded-md bg-white">
-        <img src={player.image} alt={player.name} className="h-20 w-full object-cover object-top transition-transform duration-300 group-hover:scale-105" />
-        {lot.status !== 'active' && <span className="sold-stamp">{lot.status}</span>}
-      </div>
-      <div className="mt-1.5 flex items-end justify-between gap-2">
-        <p className="truncate text-[10px] font-black tracking-[0.1em] text-white uppercase">{player.name}</p>
-        <span className="text-[9px] font-bold text-white/60">{lot.currentBid}</span>
+      <div className="flex items-center gap-2.5">
+        <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md border border-white/20 bg-white">
+          <img src={playerImage} alt={player.name} className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[11px] font-black tracking-[0.08em] text-white uppercase">{player.name}</p>
+          <p className="mt-0.5 truncate text-[10px] text-white/60">{playerRole}</p>
+        </div>
+
+        <div className="flex flex-col items-end gap-1">
+          <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase ${lotStatusStyle}`}>
+            {lotStatus}
+          </span>
+          <p className="text-[10px] font-bold text-primary">{lot.currentBid}</p>
+        </div>
       </div>
     </button>
   );
@@ -268,7 +297,7 @@ const AuctionHub = ({
             <p className="font-display text-lg font-black uppercase text-white">Players</p>
             <p className="text-[10px] font-bold tracking-[0.16em] text-white/45 uppercase">Queue</p>
           </div>
-          <div className="mt-3 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pr-1">
+          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 pb-2">
             {auction.lots.map((lot) => (
               <AuctionLotTile
                 key={lot.id}
@@ -385,7 +414,7 @@ const AuctionHub = ({
                   <p className="font-display text-base font-black uppercase text-white">Players Queue</p>
                   <p className="text-[10px] font-bold tracking-[0.16em] text-white/45 uppercase">Tap to switch</p>
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
                   {auction.lots.map((lot) => (
                     <AuctionLotTile
                       key={lot.id}
@@ -422,6 +451,122 @@ const AuctionHub = ({
           </div>
         </CyberCard>
       </div>
+    </div>
+  );
+};
+
+const AuctionStateList = ({
+  board,
+  loading,
+  search,
+  status,
+  onSearchChange,
+  onStatusChange,
+  onOpenAuction,
+}) => {
+  const lots = board?.lots || [];
+
+  return (
+    <div className="space-y-5">
+      <div className="event-filter-wrap rounded-2xl border border-white/12 p-4 md:p-5">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+          <label className="relative flex items-center">
+            <Search className="pointer-events-none absolute left-3 h-4 w-4 text-primary" />
+            <input
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              type="text"
+              placeholder="Search by player name"
+              className="h-11 w-full border border-white/20 bg-black/65 pr-4 pl-10 text-sm text-white outline-none transition-colors focus:border-primary/70 rounded"
+            />
+          </label>
+
+          <select
+            value={status}
+            onChange={(event) => onStatusChange(event.target.value)}
+            className="h-11 border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70 rounded"
+          >
+            {AUCTION_FILTER_STATES.map((item) => (
+              <option key={item.value} value={item.value} className="bg-zinc-900">
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <CyberCard accent className="overflow-hidden p-0" hover={false}>
+        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_110px] gap-3 border-b border-white/10 bg-black/55 px-4 py-3 text-[10px] font-bold tracking-[0.18em] text-white/55 uppercase">
+          <p>Player</p>
+          <p>Role</p>
+          <p>Status</p>
+          <p>Owned By</p>
+          <p className="text-right">Action</p>
+        </div>
+
+        <div className="max-h-[62vh] overflow-y-auto">
+          {loading && (
+            <div className="border-b border-white/8 px-4 py-4 text-sm text-white/70">
+              Loading auction state...
+            </div>
+          )}
+
+          {!loading && lots.length === 0 && (
+            <div className="px-4 py-10 text-center text-sm text-white/60">
+              No lots found for this filter.
+            </div>
+          )}
+
+          {!loading && lots.map((lot) => {
+            const lotStatus = normalizeLotStatus(lot.status);
+            const lotStatusStyle = LOT_STATUS_STYLES[lotStatus] || LOT_STATUS_STYLES.pending;
+            const ownerName = lotStatus === 'sold' ? (lot.ownerName || 'Unknown owner') : 'Not sold yet';
+
+            return (
+              <div
+                key={lot.id}
+                className="grid grid-cols-1 gap-3 border-b border-white/8 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_110px] md:items-center"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="h-12 w-20 shrink-0 overflow-hidden rounded-md border border-white/20 bg-white">
+                    {lot.playerImageUrl ? (
+                      <img src={lot.playerImageUrl} alt={lot.playerName} className="h-full w-full object-cover object-top" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-black/70 text-white/40">
+                        <Users className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-white">{lot.playerName || 'Unknown player'}</p>
+                    <p className="truncate text-[11px] text-white/50">Lot #{lot.lotOrder}</p>
+                  </div>
+                </div>
+
+                <p className="text-xs font-semibold text-white/75">{lot.playerRole || '-'}</p>
+
+                <div>
+                  <span className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold tracking-[0.1em] uppercase ${lotStatusStyle}`}>
+                    {lotStatus}
+                  </span>
+                </div>
+
+                <p className="text-xs text-white/80">{ownerName}</p>
+
+                <div className="md:text-right">
+                  <button
+                    type="button"
+                    onClick={() => onOpenAuction(lot.id)}
+                    className="inline-flex h-8 items-center justify-center rounded border border-primary/45 bg-primary/10 px-3 text-[10px] font-bold tracking-[0.12em] text-primary uppercase transition-colors hover:bg-primary/20"
+                  >
+                    Open
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CyberCard>
     </div>
   );
 };
@@ -485,7 +630,8 @@ const EventsPage = () => {
   const navigate = useNavigate();
   const { eventId, tab } = useParams();
   const activeTab = tab || 'event';
-  const isAuctionViewportTab = activeTab === 'auction' || activeTab === 'players-buy';
+  const normalizedTab = activeTab === 'players-buy' ? 'auction-state' : activeTab;
+  const isAuctionViewportTab = normalizedTab === 'auction';
   const { session, logout } = useEventAuth(eventId);
   const sessionEventId = session?.eventId || '';
   const canBid = session?.role === 'owner' && Boolean(session?.ownerId);
@@ -504,6 +650,11 @@ const EventsPage = () => {
   const [auction, setAuction] = useState(null);
   const [increments, setIncrements] = useState([]);
 
+  const [auctionStateBoard, setAuctionStateBoard] = useState(null);
+  const [auctionStateLoading, setAuctionStateLoading] = useState(false);
+  const [auctionStateSearch, setAuctionStateSearch] = useState('');
+  const [auctionStateStatus, setAuctionStateStatus] = useState('all');
+
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [teamFilter, setTeamFilter] = useState('all');
@@ -515,10 +666,16 @@ const EventsPage = () => {
   const [soldAnnouncement, setSoldAnnouncement] = useState(null);
 
   useEffect(() => {
-    if (!tabIds.includes(activeTab) && eventId) {
+    if (activeTab === 'players-buy' && eventId) {
+      navigate(`/events/${eventId}/auction-state`, { replace: true });
+    }
+  }, [activeTab, eventId, navigate]);
+
+  useEffect(() => {
+    if (!tabIds.includes(normalizedTab) && eventId) {
       navigate(`/events/${eventId}/event`, { replace: true });
     }
-  }, [activeTab, eventId, navigate, tabIds]);
+  }, [normalizedTab, eventId, navigate, tabIds]);
 
   const loadBaseData = useCallback(async () => {
     setLoading(true);
@@ -546,6 +703,7 @@ const EventsPage = () => {
       setPlayers(allPlayersPayload);
       setOwners(ownerPayload);
       setAuction(auctionPayload);
+      setAuctionStateBoard(auctionPayload);
       setIncrements(incrementsPayload);
       setSelectedAuctionId(auctionPayload.activeAuctionId);
       setBidAmount(String((auctionPayload.lots || []).find((lot) => lot.id === auctionPayload.activeAuctionId)?.currentBid || auctionPayload.lots?.[0]?.currentBid || 0));
@@ -569,6 +727,7 @@ const EventsPage = () => {
     ]);
 
     setAuction(auctionPayload);
+    setAuctionStateBoard(auctionPayload);
     setAllPlayers(allPlayersPayload);
     setPlayers(filteredPlayers);
   }, [eventId, session, search, roleFilter, teamFilter, statusFilter]);
@@ -598,6 +757,52 @@ const EventsPage = () => {
 
     return () => clearTimeout(timeout);
   }, [summary, search, roleFilter, teamFilter, statusFilter, eventId, session]);
+
+  useEffect(() => {
+    if (normalizedTab !== 'auction-state' || !eventId || !session?.sessionToken) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    const timeout = setTimeout(async () => {
+      setAuctionStateLoading(true);
+      try {
+        const board = await eventsService.getAuctionBoard(eventId, session.sessionToken, {
+          search: auctionStateSearch,
+          status: auctionStateStatus,
+        });
+
+        if (isMounted) {
+          setAuctionStateBoard(board);
+        }
+      } catch (filterError) {
+        if (isMounted) {
+          setError(filterError.message || 'Failed to load auction state');
+        }
+      } finally {
+        if (isMounted) {
+          setAuctionStateLoading(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, [normalizedTab, eventId, session, auctionStateSearch, auctionStateStatus]);
+
+  useEffect(() => {
+    if (normalizedTab !== 'auction-state') {
+      return;
+    }
+
+    if (auctionStateSearch.trim() || auctionStateStatus !== 'all') {
+      return;
+    }
+
+    setAuctionStateBoard(auction);
+  }, [normalizedTab, auctionStateSearch, auctionStateStatus, auction]);
 
   useEffect(() => {
     if (!eventId || !session?.sessionToken || !session?.eventId) {
@@ -939,15 +1144,15 @@ const EventsPage = () => {
       return null;
     }
 
-    if (activeTab === 'event') {
+    if (normalizedTab === 'event') {
       return <EventCard summary={summary} auctionLots={auction.lots} />;
     }
 
-    if (activeTab === 'team') {
+    if (normalizedTab === 'team') {
       return <TeamGrid teams={teams} />;
     }
 
-    if (activeTab === 'players') {
+    if (normalizedTab === 'players') {
       return (
         <div className="space-y-6">
           <div className="event-filter-wrap rounded-2xl border border-white/12 p-4 md:p-5">
@@ -1011,7 +1216,26 @@ const EventsPage = () => {
       );
     }
 
-    // Auction and Players-Buy tabs
+    if (normalizedTab === 'auction-state') {
+      return (
+        <AuctionStateList
+          board={auctionStateBoard || auction}
+          loading={auctionStateLoading}
+          search={auctionStateSearch}
+          status={auctionStateStatus}
+          onSearchChange={setAuctionStateSearch}
+          onStatusChange={setAuctionStateStatus}
+          onOpenAuction={(lotId) => {
+            setSelectedAuctionId(lotId);
+            if (eventId) {
+              navigate(`/events/${eventId}/auction`);
+            }
+          }}
+        />
+      );
+    }
+
+    // Live auction tab
     return (
       <AuctionHub
         auction={auction}
@@ -1059,7 +1283,7 @@ const EventsPage = () => {
       <section className={isAuctionViewportTab ? 'h-[calc(100dvh-8rem)] overflow-hidden px-3 pb-3 pt-2 sm:px-4 lg:px-6 md:h-[calc(100dvh-8.5rem)]' : 'px-4 pb-12 sm:px-5 lg:px-6'}>
         <div className={`mx-auto max-w-7xl ${isAuctionViewportTab ? 'flex h-full min-h-0 flex-col' : ''}`}>
           {/* Dynamic Title */}
-          <ContextualPageTitle activeTab={activeTab} summary={summary} auction={auction} compact={isAuctionViewportTab} />
+          <ContextualPageTitle activeTab={normalizedTab} summary={summary} auction={auction} compact={isAuctionViewportTab} />
 
           {/* Session Info Bar */}
           <div className={`${isAuctionViewportTab ? 'mb-3 p-2.5 md:p-3' : 'mb-6 p-3 md:p-4'} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-white/12 bg-black/35 rounded-lg`}>
@@ -1084,7 +1308,7 @@ const EventsPage = () => {
           {/* Main Content with Animation */}
           <AnimatePresence mode="wait">
             <Motion.div
-              key={activeTab}
+              key={normalizedTab}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -18 }}
