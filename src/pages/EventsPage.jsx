@@ -150,31 +150,39 @@ const TeamGrid = ({ teams }) => (
         key={team.id}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="event-team-card overflow-hidden rounded-[2rem] border border-primary/30"
+        className="group event-team-card overflow-hidden rounded-4xl border border-white/15 bg-zinc-950/95 shadow-[0_18px_34px_rgba(0,0,0,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/45"
       >
-        <div className="relative p-6">
-          <div className="absolute inset-0 opacity-70">
-            <div className="h-full w-full bg-[radial-gradient(circle_at_20%_20%,rgba(255,0,0,0.38),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(255,80,0,0.24),transparent_45%)]" />
+        <div className="relative p-5 md:p-6">
+          <div className="absolute inset-0 opacity-85">
+            <div className="h-full w-full bg-[radial-gradient(circle_at_14%_14%,rgba(255,90,0,0.38),transparent_42%),radial-gradient(circle_at_82%_84%,rgba(250,204,21,0.2),transparent_45%)]" />
           </div>
-          <div className="relative flex items-center gap-4">
-            <img src={team.ownerAvatar} alt={team.ownerName} className="h-12 md:h-14 w-12 md:w-14 rounded-full border-2 border-white/40 object-cover" />
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-white/65 uppercase">Owner</p>
-              <h3 className="font-display text-lg md:text-xl font-black text-white">{team.ownerName}</h3>
+          <div className="relative flex items-start gap-3">
+            <img src={team.ownerAvatar} alt={team.ownerName} className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-white/45 object-cover shadow-[0_8px_14px_rgba(0,0,0,0.35)] md:h-13 md:w-13" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold tracking-[0.18em] text-white/60 uppercase">Owner</p>
+              <h3 className="line-clamp-2 font-display text-sm font-black text-white md:text-base">{team.ownerName}</h3>
             </div>
           </div>
-          <div className="relative mt-6 rounded-full border border-amber-200/20 bg-amber-300 px-4 py-2 text-center font-display text-base md:text-lg font-black text-zinc-900">
+          <div className="relative mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/12 bg-black/35 px-3 py-2.5">
+            <div>
+              <p className="text-[9px] font-bold tracking-[0.16em] text-white/45 uppercase">Available Coins</p>
+              <p className="mt-0.5 font-display text-lg font-black text-primary md:text-xl">{team.coinsLeft}</p>
+            </div>
+            <div className="h-8 w-px bg-gradient-to-b from-white/10 via-white/20 to-white/10" />
+            <div className="flex-1 text-right">
+              <p className="text-[9px] font-bold tracking-[0.16em] text-white/45 uppercase">Sold</p>
+              <p className="mt-0.5 font-display text-lg font-black text-white md:text-xl">{team.playersSold || 0}</p>
+            </div>
+          </div>
+          <div className="relative mt-4 rounded-3xl border-2 border-amber-300/40 bg-[linear-gradient(135deg,rgba(252,211,77,0.95),rgba(251,146,60,0.98))] px-4 py-2.5 text-center font-display text-base font-black text-zinc-950 shadow-[0_8px_16px_rgba(251,146,60,0.22)] md:text-lg">
             {team.name}
           </div>
-          <div className="relative mt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+          <div className="relative mt-4 space-y-2">
+            <p className="text-center text-[9px] font-bold tracking-[0.18em] text-white/50 uppercase">Roster</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
               {team.roster.map((avatar) => (
-                <img key={avatar} src={avatar} alt="Team player" className="h-8 md:h-10 w-8 md:w-10 rounded-full border border-white/40 object-cover" />
+                <img key={avatar} src={avatar} alt="Team player" className="h-9 w-9 rounded-full border-2 border-white/30 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.25)] transition-transform hover:scale-110 md:h-10 md:w-10" />
               ))}
-            </div>
-            <div className="rounded-lg border border-white/15 bg-black/40 px-2.5 py-1 text-center sm:text-right">
-              <p className="text-[9px] tracking-[0.2em] text-white/45 uppercase">Coin Left</p>
-              <p className="font-display text-base font-bold text-white">{team.coinsLeft}</p>
             </div>
           </div>
         </div>
@@ -184,33 +192,33 @@ const TeamGrid = ({ teams }) => (
 );
 
 const PlayerGrid = ({ players, onSelect }) => (
-  <div className="grid gap-4 md:gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+  <div className="grid grid-cols-2 gap-3 md:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
     {players.map((player) => (
       <button
         key={player.id}
         type="button"
         onClick={() => onSelect(player.id)}
-        className="group relative overflow-hidden rounded-[1.5rem] border border-white/15 bg-zinc-950 text-left transition-all hover:border-primary/70"
+        className="group relative mx-auto w-full max-w-52 overflow-hidden rounded-2xl border border-white/15 bg-zinc-950/95 text-left shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/65"
       >
-        <div className="relative aspect-[4/5] overflow-hidden bg-white">
-          <img src={player.image} alt={player.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        <div className="relative h-40 w-full overflow-hidden bg-zinc-100">
+          <img src={player.image} alt={player.name} className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105" />
           {player.status !== 'active' && <span className="sold-stamp">{player.status}</span>}
         </div>
-        <div className="border-y border-primary/60 bg-gradient-to-r from-orange-500 to-amber-400 px-3 py-2 font-display text-base md:text-lg font-black text-zinc-950 uppercase">
+        <div className="border-y border-primary/55 bg-[linear-gradient(92deg,#f59e0b,#f97316)] px-2.5 py-1.5 font-display text-sm font-black text-zinc-950 uppercase md:text-base">
           {player.name}
         </div>
-        <div className="grid grid-cols-3 gap-2 bg-zinc-950 px-3 py-3 text-white text-[10px] md:text-xs">
+        <div className="grid grid-cols-3 gap-1.5 bg-[linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.98))] px-2.5 py-2.5 text-[10px] text-white md:text-xs">
           <div>
             <p className="text-[9px] tracking-[0.16em] text-white/40 uppercase">Role</p>
-            <p className="font-display text-xs md:text-sm font-bold">{player.role}</p>
+            <p className="font-display text-[11px] font-bold md:text-xs">{player.role}</p>
           </div>
           <div>
             <p className="text-[9px] tracking-[0.16em] text-white/40 uppercase">Coin</p>
-            <p className="font-display text-xs md:text-sm font-bold">{player.nmCoin}</p>
+            <p className="font-display text-[11px] font-bold md:text-xs">{player.nmCoin}</p>
           </div>
           <div>
             <p className="text-[9px] tracking-[0.16em] text-white/40 uppercase">Rank</p>
-            <p className="font-display text-xs md:text-sm font-bold">{player.rankPoint}</p>
+            <p className="font-display text-[11px] font-bold md:text-xs">{player.rankPoint}</p>
           </div>
         </div>
       </button>
@@ -613,13 +621,22 @@ const SoldAnnouncementPopup = ({ data, onClose }) => {
 
 const normalizeLotStatus = (status) => String(status || 'pending').toLowerCase();
 
-const computeSecondsLeft = (endsAt) => {
+const normalizeEndTime = (endsAt) => {
   if (!endsAt) {
-    return 0;
+    return null;
   }
 
   const endMs = typeof endsAt === 'number' ? endsAt : new Date(endsAt).getTime();
   if (!Number.isFinite(endMs)) {
+    return null;
+  }
+
+  return endMs;
+};
+
+const computeSecondsLeft = (endsAt) => {
+  const endMs = normalizeEndTime(endsAt);
+  if (!endMs) {
     return 0;
   }
 
@@ -891,22 +908,42 @@ const EventsPage = () => {
           return prev;
         }
 
-        const nextLots = (prev.lots || []).map((lot) => {
-          if (lot.id !== activeLotId) {
-            return lot;
-          }
+        const resolvedActiveLotId = activeLotId || prev.activeAuctionId || null;
+        const prevEndTime = normalizeEndTime(prev.activeLotEndsAt);
+        const incomingEndTime = normalizeEndTime(activeLotEndsAt);
+        const nextEndTime = incomingEndTime ?? prevEndTime;
+        const parsedTimeLeft = Number(timeLeft);
+        const nextTimeLeft = Number.isFinite(parsedTimeLeft) ? parsedTimeLeft : Number(prev.timeLeft || 0);
+        const activeLot = (prev.lots || []).find((lot) => lot.id === resolvedActiveLotId);
+        const currentLotTimeLeft = Number(activeLot?.timeLeft ?? prev.timeLeft ?? 0);
 
-          return {
-            ...lot,
-            timeLeft: Number(timeLeft || 0),
-          };
-        });
+        const topLevelTimeUnchanged = Number(prev.timeLeft || 0) === nextTimeLeft;
+        const lotTimeUnchanged = currentLotTimeLeft === nextTimeLeft;
+        const endTimeUnchanged = prevEndTime === nextEndTime;
+        const activeLotUnchanged = (prev.activeAuctionId || null) === resolvedActiveLotId;
+
+        if (topLevelTimeUnchanged && lotTimeUnchanged && endTimeUnchanged && activeLotUnchanged) {
+          return prev;
+        }
+
+        const nextLots = !resolvedActiveLotId || lotTimeUnchanged
+          ? (prev.lots || [])
+          : (prev.lots || []).map((lot) => {
+            if (lot.id !== resolvedActiveLotId) {
+              return lot;
+            }
+
+            return {
+              ...lot,
+              timeLeft: nextTimeLeft,
+            };
+          });
 
         return {
           ...prev,
-          activeAuctionId: activeLotId || prev.activeAuctionId,
-          activeLotEndsAt: activeLotEndsAt || prev.activeLotEndsAt || null,
-          timeLeft: Number(timeLeft || 0),
+          activeAuctionId: resolvedActiveLotId,
+          activeLotEndsAt: nextEndTime,
+          timeLeft: nextTimeLeft,
           lots: nextLots,
         };
       });
@@ -930,19 +967,45 @@ const EventsPage = () => {
           return prev;
         }
 
-        return {
-          ...prev,
-          activeLotEndsAt: activeLotEndsAt || prev.activeLotEndsAt || null,
-          lots: (prev.lots || []).map((lot) => (
+        const prevEndTime = normalizeEndTime(prev.activeLotEndsAt);
+        const incomingEndTime = normalizeEndTime(activeLotEndsAt);
+        const nextEndTime = incomingEndTime ?? prevEndTime;
+        const parsedTimeLeft = Number(timeLeft);
+        const targetLot = (prev.lots || []).find((lot) => lot.id === lotId) || null;
+        const lotTimeLeft = Number.isFinite(parsedTimeLeft)
+          ? parsedTimeLeft
+          : Number(targetLot?.timeLeft ?? computeSecondsLeft(nextEndTime));
+
+        const lotChanged = Boolean(targetLot) && (
+          targetLot.currentOwnerId !== ownerId
+          || Number(targetLot.currentBid ?? 0) !== Number(amount ?? 0)
+          || Number(targetLot.timeLeft ?? 0) !== lotTimeLeft
+        );
+        const endTimeChanged = prevEndTime !== nextEndTime;
+        const shouldUpdateTopLevelTime = lotId === prev.activeAuctionId && Number(prev.timeLeft || 0) !== lotTimeLeft;
+
+        if (!lotChanged && !endTimeChanged && !shouldUpdateTopLevelTime) {
+          return prev;
+        }
+
+        const nextLots = lotChanged
+          ? (prev.lots || []).map((lot) => (
             lot.id === lotId
               ? {
                 ...lot,
                 currentOwnerId: ownerId,
                 currentBid: amount,
-                timeLeft: Number(timeLeft || computeSecondsLeft(activeLotEndsAt || prev.activeLotEndsAt) || lot.timeLeft || 0),
+                timeLeft: lotTimeLeft,
               }
               : lot
-          )),
+          ))
+          : (prev.lots || []);
+
+        return {
+          ...prev,
+          activeLotEndsAt: nextEndTime,
+          timeLeft: shouldUpdateTopLevelTime ? lotTimeLeft : prev.timeLeft,
+          lots: nextLots,
         };
       });
     });
@@ -1011,21 +1074,36 @@ const EventsPage = () => {
         const activeLot = (prev.lots || []).find((lot) => lot.id === prev.activeAuctionId);
         const endTime = prev.activeLotEndsAt || activeLot?.endsAt || null;
         const secondsLeft = computeSecondsLeft(endTime);
+        const currentTopLevel = Number(prev.timeLeft || 0);
+        const currentLotTimeLeft = Number(activeLot?.timeLeft ?? currentTopLevel);
+        const shouldUpdateLot = Boolean(activeLot) && (
+          currentLotTimeLeft !== secondsLeft
+          || Boolean(!activeLot.endsAt && endTime)
+        );
+        const shouldUpdateTopLevel = currentTopLevel !== secondsLeft;
 
-        return {
-          ...prev,
-          timeLeft: secondsLeft,
-          lots: (prev.lots || []).map((lot) => (
+        if (!shouldUpdateLot && !shouldUpdateTopLevel) {
+          return prev;
+        }
+
+        const nextLots = shouldUpdateLot
+          ? (prev.lots || []).map((lot) => (
             lot.id === prev.activeAuctionId
               ? { ...lot, timeLeft: secondsLeft, endsAt: lot.endsAt || endTime }
               : lot
-          )),
+          ))
+          : (prev.lots || []);
+
+        return {
+          ...prev,
+          timeLeft: shouldUpdateTopLevel ? secondsLeft : prev.timeLeft,
+          lots: nextLots,
         };
       });
     }, 250);
 
     return () => clearInterval(interval);
-  }, [auction?.activeLotEndsAt, auction?.activeAuctionId, auction?.lots]);
+  }, [auction?.activeLotEndsAt, auction?.activeAuctionId]);
 
   useEffect(() => {
     if (!error) {
@@ -1075,10 +1153,17 @@ const EventsPage = () => {
     }
 
     const availableIds = new Set(auction.lots.map((lot) => lot.id));
-    if (!selectedAuctionId || !availableIds.has(selectedAuctionId)) {
-      setSelectedAuctionId(auction.activeAuctionId || auction.lots[0].id);
+    const activeLotId = auction.activeAuctionId || null;
+
+    if (normalizedTab === 'auction' && activeLotId && selectedAuctionId !== activeLotId) {
+      setSelectedAuctionId(activeLotId);
+      return;
     }
-  }, [auction, selectedAuctionId]);
+
+    if (!selectedAuctionId || !availableIds.has(selectedAuctionId)) {
+      setSelectedAuctionId(activeLotId || auction.lots[0].id);
+    }
+  }, [auction, normalizedTab, selectedAuctionId]);
 
   const roleOptions = useMemo(
     () => ['all', ...new Set(allPlayers.map((player) => player.role))],

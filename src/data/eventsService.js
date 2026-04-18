@@ -96,6 +96,8 @@ const mapTeam = (team) => ({
   name: team.name,
   ownerName: team.owner?.name || '-',
   ownerAvatar: team.owner?.avatarUrl || '',
+  players: team.players || [],
+  playersSold: (team.players || []).length,
   roster: (team.players || []).map((player) => player.imageUrl).filter(Boolean),
   coinsLeft: team.coinsLeft,
   ownerId: team.ownerId,

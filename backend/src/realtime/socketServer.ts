@@ -15,6 +15,11 @@ const adminEventRoom = (eventId: string) => `${ADMIN_EVENT_PREFIX}${eventId}`;
 let io: SocketIOServer | null = null;
 let timerHandle: NodeJS.Timeout | null = null;
 let tickerInFlight = false;
+const lastTimerSnapshots = new Map<string, {
+  timeLeft: number;
+  activeLotId: string | null;
+  activeLotEndsAt: number | null;
+}>();
 
 const getSocketEventId = (socket: { data?: any }): string | null => {
   const eventId = socket.data?.eventId;
@@ -27,6 +32,28 @@ const computeTimeLeft = (activeLotEndsAt: number | null) => {
   }
 
   return Math.max(0, Math.ceil((activeLotEndsAt - Date.now()) / 1000));
+};
+
+const shouldEmitTimerTick = (
+  eventId: string,
+  snapshot: {
+    timeLeft: number;
+    activeLotId: string | null;
+    activeLotEndsAt: number | null;
+  },
+) => {
+  const previous = lastTimerSnapshots.get(eventId);
+  if (
+    previous
+    && previous.timeLeft === snapshot.timeLeft
+    && previous.activeLotId === snapshot.activeLotId
+    && previous.activeLotEndsAt === snapshot.activeLotEndsAt
+  ) {
+    return false;
+  }
+
+  lastTimerSnapshots.set(eventId, snapshot);
+  return true;
 };
 
 const emitAuctionState = async (eventId: string) => {
@@ -77,23 +104,34 @@ const runTickerCycle = async () => {
       }
     });
 
+    for (const cachedEventId of Array.from(lastTimerSnapshots.keys())) {
+      if (!eventIds.has(cachedEventId)) {
+        lastTimerSnapshots.delete(cachedEventId);
+      }
+    }
+
     for (const eventId of eventIds) {
       try {
         const tickResult = await auctionService.tickAuction(eventId);
-        io.to(eventRoom(eventId)).emit('timer_tick', {
-          eventId,
+        const timerSnapshot = {
           timeLeft: computeTimeLeft(tickResult.runtime.activeLotEndsAt),
-          activeLotId: tickResult.runtime.activeLotId,
+          activeLotId: tickResult.runtime.activeLotId || null,
           activeLotEndsAt: tickResult.runtime.activeLotEndsAt || null,
-          serverNow: Date.now(),
-        });
-        io.to(adminEventRoom(eventId)).emit('timer_tick', {
+        };
+        const shouldEmitTimer = tickResult.progressed
+          || tickResult.runtime.isRunning
+          || Boolean(tickResult.runtime.activeLotId);
+
+        if (shouldEmitTimer && shouldEmitTimerTick(eventId, timerSnapshot)) {
+          const timerPayload = {
           eventId,
-          timeLeft: computeTimeLeft(tickResult.runtime.activeLotEndsAt),
-          activeLotId: tickResult.runtime.activeLotId,
-          activeLotEndsAt: tickResult.runtime.activeLotEndsAt || null,
+            ...timerSnapshot,
           serverNow: Date.now(),
-        });
+          };
+
+          io.to(eventRoom(eventId)).emit('timer_tick', timerPayload);
+          io.to(adminEventRoom(eventId)).emit('timer_tick', timerPayload);
+        }
 
         if (tickResult.progressed) {
           if (tickResult.previousActiveLotId) {
