@@ -3,6 +3,7 @@ import { prisma } from '../config/database.js';
 import { redis } from '../config/redis.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { eventService } from './eventService.js';
+import { logger } from '../utils/logger.js';
 
 const redisKey = {
   state: (eventId: string) => `auction:${eventId}:state`,
@@ -32,12 +33,18 @@ interface AuctionBoardFilters {
   ownerName?: string;
 }
 
+const AUCTION_LOCK_TTL_MS = 10000;
+
 const computeTimeLeft = (activeLotEndsAt: number | null) => {
   if (!activeLotEndsAt) {
     return 0;
   }
 
   return Math.max(0, Math.ceil((activeLotEndsAt - Date.now()) / 1000));
+};
+
+const hasBidWindowClosed = (activeLotEndsAt: number, now = Date.now()) => {
+  return activeLotEndsAt <= now;
 };
 
 const buildInitialState = (eventId: string, lotDuration: number): AuctionRuntimeState => ({
@@ -69,7 +76,7 @@ const normalizeRuntimeState = (
 
 const withLock = async <T>(eventId: string, task: () => Promise<T>) => {
   const key = redisKey.lock(eventId);
-  const acquired = await redis.set(key, '1', 'PX', 3000, 'NX');
+  const acquired = await redis.set(key, '1', 'PX', AUCTION_LOCK_TTL_MS, 'NX');
   if (!acquired) {
     throw new AppError('Another auction action is currently being processed. Please retry in a moment.', 409, 'AUCTION_LOCKED');
   }
@@ -122,6 +129,16 @@ const toBoardLot = (lot: any, runtime: AuctionRuntimeState, ownerNameById: Recor
 };
 
 export const auctionService = {
+  async getTickableEventIds() {
+    const activeLots = await prisma.auctionLot.findMany({
+      where: { status: AuctionStatus.ACTIVE },
+      select: { eventId: true },
+      distinct: ['eventId'],
+    });
+
+    return activeLots.map((lot) => lot.eventId);
+  },
+
   async getRuntimeState(eventId: string, lotDuration: number) {
     const key = redisKey.state(eventId);
     const raw = await redis.get(key);
@@ -231,7 +248,7 @@ export const auctionService = {
       const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
       const now = Date.now();
 
-      if (runtime.activeLotEndsAt && runtime.activeLotEndsAt <= now) {
+      if (runtime.activeLotEndsAt && hasBidWindowClosed(runtime.activeLotEndsAt, now)) {
         throw new AppError('Bidding window is already closed for this lot.', 400, 'BID_WINDOW_CLOSED');
       }
 
@@ -259,7 +276,8 @@ export const auctionService = {
         throw new AppError('Selected lot is not active for bidding.', 400, 'LOT_NOT_ACTIVE');
       }
 
-      if (!runtime.activeLotEndsAt || runtime.activeLotEndsAt <= Date.now()) {
+      const bidAcceptedAt = Date.now();
+      if (!runtime.activeLotEndsAt || hasBidWindowClosed(runtime.activeLotEndsAt, bidAcceptedAt)) {
         throw new AppError('Bidding window is already closed for this lot.', 400, 'BID_WINDOW_CLOSED');
       }
 
@@ -291,7 +309,7 @@ export const auctionService = {
       runtime.liveBids[lot.id] = {
         ownerId,
         amount,
-        updatedAt: Date.now(),
+        updatedAt: bidAcceptedAt,
       };
       await this.saveRuntimeState(event.id, runtime);
 
@@ -344,9 +362,11 @@ export const auctionService = {
       };
     }
 
-    const liveBid = runtime.liveBids[lot.id];
-    const finalOwnerId = options.overrideOwnerId ?? liveBid?.ownerId ?? null;
-    const finalAmount = options.overrideAmount ?? liveBid?.amount ?? lot.player.basePrice;
+    const liveBidSnapshot = runtime.liveBids[lot.id]
+      ? { ...runtime.liveBids[lot.id] }
+      : null;
+    const finalOwnerId = options.overrideOwnerId ?? liveBidSnapshot?.ownerId ?? null;
+    const finalAmount = options.overrideAmount ?? liveBidSnapshot?.amount ?? lot.player.basePrice;
     const finalStatus = options.forcedStatus || (finalOwnerId ? 'SOLD' : 'UNSOLD');
 
     if (finalStatus === 'SOLD' && !finalOwnerId) {
@@ -404,6 +424,8 @@ export const auctionService = {
         },
       });
     });
+
+    logger.info(`[auction:settle] event=${event.id} lot=${lot.id} status=${finalStatus} winnerOwnerId=${finalOwnerId || 'none'} amount=${finalAmount} activeLotEndsAt=${runtime.activeLotEndsAt || 'none'} settledAt=${Date.now()} bidSnapshotUpdatedAt=${liveBidSnapshot?.updatedAt || 'none'}`);
 
     delete runtime.liveBids[lot.id];
 
@@ -994,9 +1016,11 @@ export const auctionService = {
       }
 
       const previousActiveLotId = runtime.activeLotId;
+      const now = Date.now();
       const nextTimeLeft = computeTimeLeft(runtime.activeLotEndsAt);
+      const hasExpired = Boolean(runtime.activeLotEndsAt && runtime.activeLotEndsAt <= now);
 
-      if (nextTimeLeft === 0) {
+      if (hasExpired || nextTimeLeft === 0) {
         if (!runtime.autoProgress) {
           const current = await prisma.auctionLot.findFirst({
             where: { id: previousActiveLotId, eventId: event.id },

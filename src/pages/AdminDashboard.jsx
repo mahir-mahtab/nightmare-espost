@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { io } from 'socket.io-client';
@@ -45,6 +45,44 @@ const toLocalDateTimeInput = (value) => {
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
+
+const normalizeEndTimestamp = (value) => {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber)) {
+    return asNumber;
+  }
+
+  const parsed = Date.parse(String(value));
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const secondsLeftFromEndTime = (endTimestamp) => {
+  const normalized = normalizeEndTimestamp(endTimestamp);
+  if (!normalized) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((normalized - Date.now()) / 1000));
+};
+
+const formatActivityTime = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '--:--:--';
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+};
+
+const lotNameFromAuctionLot = (lot) => lot?.player?.name || lot?.playerName || lot?.playerId || 'Unknown player';
 
 const apiErrorMessage = (payload, fallbackMessage) => {
   const baseMessage = payload?.message || fallbackMessage;
@@ -220,6 +258,10 @@ const AdminDashboard = () => {
   const [bulkType, setBulkType] = useState('owners');
   const [socketConnected, setSocketConnected] = useState(false);
   const [liveAuctionState, setLiveAuctionState] = useState(null);
+  const [auctionActivity, setAuctionActivity] = useState([]);
+
+  const liveAuctionStateRef = useRef(null);
+  const zeroTickMarkerRef = useRef('');
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -228,6 +270,58 @@ const AdminDashboard = () => {
     () => events.find((evt) => evt.id === selectedEventId) || null,
     [events, selectedEventId]
   );
+
+  const appendAuctionActivity = useCallback((eventId, level, messageText) => {
+    if (!eventId || !selectedEventId || eventId !== selectedEventId || !messageText) {
+      return;
+    }
+
+    setAuctionActivity((previous) => {
+      const next = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        level,
+        message: messageText,
+        at: Date.now(),
+      };
+
+      const latest = previous[0];
+      if (latest && latest.message === next.message && Math.abs(next.at - latest.at) < 1500) {
+        return previous;
+      }
+
+      return [next, ...previous].slice(0, 18);
+    });
+  }, [selectedEventId]);
+
+  const mergedAuctionRuntime = useMemo(() => {
+    const persistedRuntime = eventData?.auctionRuntime || null;
+
+    if (!liveAuctionState) {
+      return persistedRuntime;
+    }
+
+    return {
+      ...(persistedRuntime || {}),
+      activeLotId: liveAuctionState.activeLotId ?? persistedRuntime?.activeLotId ?? null,
+      isRunning: typeof liveAuctionState.isRunning === 'boolean' ? liveAuctionState.isRunning : Boolean(persistedRuntime?.isRunning),
+      autoProgress: typeof liveAuctionState.autoProgress === 'boolean' ? liveAuctionState.autoProgress : Boolean(persistedRuntime?.autoProgress),
+      lotDuration: Number(liveAuctionState.lotDuration ?? persistedRuntime?.lotDuration ?? eventData?.auctionWindowSeconds ?? 0),
+      activeLotEndsAt: liveAuctionState.activeLotEndsAt ?? persistedRuntime?.activeLotEndsAt ?? null,
+      timeLeft: Number(liveAuctionState.timeLeft || 0),
+    };
+  }, [eventData, liveAuctionState]);
+
+  const mergedAuctionLots = useMemo(() => {
+    const sourceLots = liveAuctionState?.lots || eventData?.auctionLots || [];
+    const activeLotId = liveAuctionState?.activeLotId || null;
+    const liveTimeLeft = Number(liveAuctionState?.timeLeft || 0);
+
+    return sourceLots.map((lot) => ({
+      ...lot,
+      timeLeft: lot.id === activeLotId ? liveTimeLeft : lot.timeLeft,
+      player: lot.player || (lot.playerName ? { name: lot.playerName } : undefined),
+    }));
+  }, [eventData, liveAuctionState]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -332,15 +426,26 @@ const AdminDashboard = () => {
       setSocketConnected(true);
       if (selectedEventId) {
         socket.emit('join_admin_event', { eventId: selectedEventId });
+        appendAuctionActivity(selectedEventId, 'info', 'Admin room connected to live auction stream.');
       }
     });
 
     socket.on('disconnect', () => {
       setSocketConnected(false);
+      if (selectedEventId) {
+        appendAuctionActivity(selectedEventId, 'warn', 'Live socket disconnected. Reconnecting...');
+      }
     });
 
     socket.on('connect_error', () => {
       setSocketConnected(false);
+      if (selectedEventId) {
+        appendAuctionActivity(selectedEventId, 'warn', 'Live socket connection error. Retrying...');
+      }
+    });
+
+    socket.on('joined_admin_event', ({ eventId: incomingEventId }) => {
+      appendAuctionActivity(incomingEventId, 'info', 'Joined admin event room. Realtime controls are synced.');
     });
 
     socket.on('auction_state', (state) => {
@@ -348,20 +453,178 @@ const AdminDashboard = () => {
         return;
       }
 
+      const previous = liveAuctionStateRef.current;
       setLiveAuctionState(state);
+      liveAuctionStateRef.current = state;
+
+      if (!previous) {
+        appendAuctionActivity(state.eventId, 'info', 'Live auction state synchronized.');
+        return;
+      }
+
+      if (previous.isRunning !== state.isRunning) {
+        appendAuctionActivity(state.eventId, state.isRunning ? 'success' : 'warn', state.isRunning ? 'Auction runtime is ON.' : 'Auction runtime is OFF.');
+      }
+
+      if (previous.activeLotId !== state.activeLotId) {
+        appendAuctionActivity(
+          state.eventId,
+          'info',
+          state.activeLotId
+            ? `Active lot switched to ${state.activeLotId}.`
+            : 'No active lot in runtime. Waiting for start or next-lot action.',
+        );
+      }
+    });
+
+    socket.on('timer_tick', ({ eventId: incomingEventId, activeLotId, activeLotEndsAt }) => {
+      if (!selectedEventId || incomingEventId !== selectedEventId) {
+        return;
+      }
+
+      const incomingEndTimestamp = normalizeEndTimestamp(activeLotEndsAt);
+      const remaining = secondsLeftFromEndTime(incomingEndTimestamp);
+      const marker = `${incomingEventId}:${activeLotId || 'none'}`;
+
+      setLiveAuctionState((previousState) => {
+        if (!previousState) {
+          return previousState;
+        }
+
+        const previousEndTimestamp = normalizeEndTimestamp(previousState.activeLotEndsAt);
+        const nextEndTimestamp = incomingEndTimestamp ?? previousEndTimestamp;
+        const nextTimeLeft = secondsLeftFromEndTime(nextEndTimestamp);
+        const nextActiveLotId = activeLotId || previousState.activeLotId || null;
+
+        const isSameEndTimestamp = previousEndTimestamp === nextEndTimestamp;
+        const isSameTimeLeft = Number(previousState.timeLeft || 0) === nextTimeLeft;
+        const isSameActiveLot = (previousState.activeLotId || null) === nextActiveLotId;
+
+        if (isSameEndTimestamp && isSameTimeLeft && isSameActiveLot) {
+          return previousState;
+        }
+
+        return {
+          ...previousState,
+          activeLotId: nextActiveLotId,
+          activeLotEndsAt: nextEndTimestamp,
+          timeLeft: nextTimeLeft,
+        };
+      });
+
+      if (remaining <= 0 && activeLotId && zeroTickMarkerRef.current !== marker) {
+        zeroTickMarkerRef.current = marker;
+        appendAuctionActivity(incomingEventId, 'warn', `Timer reached zero for lot ${activeLotId}. Settlement should complete now.`);
+      }
+
+      if (remaining > 0) {
+        zeroTickMarkerRef.current = '';
+      }
+    });
+
+    socket.on('new_bid', ({ eventId: incomingEventId, lotId, amount }) => {
+      if (!selectedEventId || incomingEventId !== selectedEventId) {
+        return;
+      }
+
+      appendAuctionActivity(incomingEventId, 'info', `New bid on lot ${lotId}: ${Number(amount || 0)}.`);
+    });
+
+    socket.on('lot_status_changed', ({ eventId: incomingEventId, lot }) => {
+      if (!selectedEventId || incomingEventId !== selectedEventId || !lot) {
+        return;
+      }
+
+      const lotStatus = toText(lot.status).toUpperCase();
+      const lotLabel = `#${toText(lot.lotOrder)} ${lot.playerName || lot.player?.name || lot.playerId || lot.id}`;
+
+      appendAuctionActivity(
+        incomingEventId,
+        lotStatus === 'SOLD' ? 'success' : 'warn',
+        `${lotLabel} settled as ${lotStatus}${lot.currentOwnerName ? ` to ${lot.currentOwnerName}` : ''}.`,
+      );
+    });
+
+    socket.on('active_lot_changed', ({ eventId: incomingEventId, previousLotId, newLotId }) => {
+      if (!selectedEventId || incomingEventId !== selectedEventId) {
+        return;
+      }
+
+      appendAuctionActivity(
+        incomingEventId,
+        'info',
+        `Active lot changed from ${previousLotId || 'none'} to ${newLotId || 'none'}.`,
+      );
+    });
+
+    socket.on('auction_started', ({ eventId: incomingEventId, firstLotId }) => {
+      appendAuctionActivity(incomingEventId, 'success', `Auction started${firstLotId ? ` with lot ${firstLotId}` : ''}.`);
+    });
+
+    socket.on('auction_stopped', ({ eventId: incomingEventId }) => {
+      appendAuctionActivity(incomingEventId, 'warn', 'Auction stopped by admin action.');
     });
 
     socket.on('auction_error', (payload) => {
       setError(payload?.message || 'Live connection interrupted');
+      if (selectedEventId) {
+        appendAuctionActivity(selectedEventId, 'warn', payload?.message || 'Live connection interrupted');
+      }
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [token, selectedEventId]);
+  }, [token, selectedEventId, appendAuctionActivity]);
 
   useEffect(() => {
     setLiveAuctionState(null);
+    setAuctionActivity([]);
+    liveAuctionStateRef.current = null;
+    zeroTickMarkerRef.current = '';
+  }, [selectedEventId]);
+
+  useEffect(() => {
+    if (!selectedEventId) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      setLiveAuctionState((previousState) => {
+        if (!previousState) {
+          return previousState;
+        }
+
+        const isRunning = Boolean(previousState.isRunning);
+        const activeLotId = previousState.activeLotId || null;
+        const endTimestamp = normalizeEndTimestamp(previousState.activeLotEndsAt);
+
+        if (!isRunning || !activeLotId || !endTimestamp) {
+          if (Number(previousState.timeLeft || 0) === 0) {
+            return previousState;
+          }
+
+          return {
+            ...previousState,
+            timeLeft: 0,
+          };
+        }
+
+        const nextTimeLeft = secondsLeftFromEndTime(endTimestamp);
+        if (Number(previousState.timeLeft || 0) === nextTimeLeft) {
+          return previousState;
+        }
+
+        return {
+          ...previousState,
+          timeLeft: nextTimeLeft,
+        };
+      });
+    }, 250);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [selectedEventId]);
 
   const handleLogout = () => {
@@ -495,7 +758,7 @@ const AdminDashboard = () => {
                       <p className="mt-1 text-xs text-white/60">/{eventData.slug} | {eventData.status}</p>
                       {liveAuctionState && (
                         <p className="mt-1 text-[11px] text-primary/80">
-                          Live Auction: {liveAuctionState.activeLotId ? `Lot ${liveAuctionState.activeLotId}` : 'No active lot'} | Time Left: {Number(liveAuctionState.timeLeft || 0)}s
+                          Live Auction: {liveAuctionState.isRunning ? 'Runtime ON' : 'Runtime OFF'} | {liveAuctionState.activeLotId ? `Active ${liveAuctionState.activeLotId}` : 'No active lot'} | Time Left: {Number(liveAuctionState.timeLeft || 0)}s
                         </p>
                       )}
                     </div>
@@ -590,8 +853,11 @@ const AdminDashboard = () => {
                   )}
                   {activeTab === 'lots' && (
                     <LotsTab
-                      lots={eventData.auctionLots || []}
-                      runtime={eventData.auctionRuntime || null}
+                      lots={mergedAuctionLots}
+                      runtime={mergedAuctionRuntime}
+                      liveAuctionState={liveAuctionState}
+                      auctionActivity={auctionActivity}
+                      socketConnected={socketConnected}
                       players={eventData.players || []}
                       owners={eventData.owners || []}
                       eventId={eventData.id}
@@ -1369,7 +1635,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
   );
 };
 
-const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onChanged }) => {
+const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onChanged, liveAuctionState, auctionActivity, socketConnected }) => {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState('');
   const [auctionBusy, setAuctionBusy] = useState(false);
@@ -1430,6 +1696,22 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
     () => lots.find((lot) => lot.status === 'ACTIVE') || null,
     [lots]
   );
+
+  const liveRuntimeTimeLeft = Number(runtime?.timeLeft ?? activeLot?.timeLeft ?? 0);
+  const liveRuntimeBadgeClass = isAuctionRunning
+    ? 'border-green-400/45 bg-green-400/10 text-green-300'
+    : 'border-yellow-300/45 bg-yellow-300/10 text-yellow-200';
+
+  const activityToneClass = (level) => {
+    if (level === 'success') {
+      return 'border-green-400/40 bg-green-400/10 text-green-200';
+    }
+    if (level === 'warn') {
+      return 'border-yellow-300/40 bg-yellow-300/10 text-yellow-100';
+    }
+
+    return 'border-sky-300/35 bg-sky-300/10 text-sky-100';
+  };
 
   useEffect(() => {
     setAutoProgress(Boolean(runtime?.autoProgress));
@@ -1645,7 +1927,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
     }
 
     const selectedOwner = owners.find((owner) => owner.id === controlOwnerId);
-    const selectedLotName = selectedLot?.player?.name || selectedLot?.playerId || controlLotId;
+    const selectedLotName = lotNameFromAuctionLot(selectedLot) || controlLotId;
     const confirmMessage = [
       'Emergency override will bypass normal bidding settlement.',
       `Lot: ${selectedLotName}`,
@@ -1696,7 +1978,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
     const previewOwner = activeLot.currentOwnerName || 'No bids';
     const previewAmount = Number(activeLot.currentBid || 0);
     const previewStatus = activeLot.currentOwnerId ? 'SOLD' : 'UNSOLD';
-    const lotName = activeLot.player?.name || activeLot.playerId;
+    const lotName = lotNameFromAuctionLot(activeLot);
 
     const confirmMessage = [
       `Settle current lot #${activeLot.lotOrder} (${lotName})?`,
@@ -1790,6 +2072,49 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
         <div className="mt-3 rounded border border-white/15 bg-black/35 p-2 text-[10px] text-white/70">
           Workflow guardrails: settle current lot first, then activate next lot. Reset to pending refunds sold coins and re-opens the lot for re-auction.
         </div>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-[1.2fr_1.8fr]">
+          <div className="rounded border border-white/20 bg-black/45 p-3">
+            <p className="text-[10px] font-bold tracking-[0.16em] text-white/60 uppercase">Live Runtime Pulse</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={`rounded border px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] uppercase ${socketConnected ? 'border-green-400/45 bg-green-400/10 text-green-300' : 'border-yellow-300/45 bg-yellow-300/10 text-yellow-200'}`}>
+                {socketConnected ? 'Socket Connected' : 'Socket Reconnecting'}
+              </span>
+              <span className={`rounded border px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] uppercase ${liveRuntimeBadgeClass}`}>
+                {isAuctionRunning ? 'Auction ON' : 'Auction OFF'}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-white/70">
+              {isAuctionRunning
+                ? `Active lot ${runtime?.activeLotId || activeLot?.id || '-'} with ${liveRuntimeTimeLeft}s left.`
+                : 'Auction is currently stopped. Use Start Auction or Activate Next Lot.'}
+            </p>
+            {liveAuctionState?.activeLotEndsAt && (
+              <p className="mt-1 text-[10px] text-white/50">
+                Active ends at: {new Date(liveAuctionState.activeLotEndsAt).toLocaleTimeString()}
+              </p>
+            )}
+          </div>
+
+          <div className="rounded border border-white/20 bg-black/45 p-3">
+            <p className="text-[10px] font-bold tracking-[0.16em] text-white/60 uppercase">Realtime Admin Feed</p>
+            {auctionActivity.length === 0 ? (
+              <p className="mt-2 text-xs text-white/55">No realtime updates yet. Events appear here when auction state changes.</p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {auctionActivity.slice(0, 8).map((activity) => (
+                  <div key={activity.id} className={`rounded border px-2.5 py-2 text-[11px] ${activityToneClass(activity.level)}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold uppercase tracking-[0.12em]">{activity.level}</span>
+                      <span className="text-[10px] opacity-70">{formatActivityTime(activity.at)}</span>
+                    </div>
+                    <p className="mt-1 leading-relaxed">{activity.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -1799,7 +2124,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
           <div className="mt-3 rounded border border-white/20 bg-black/50 p-3">
             <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Current Active Lot</p>
             <p className="mt-1 text-sm font-bold text-white">
-              {activeLot ? `#${activeLot.lotOrder} - ${activeLot.player?.name || activeLot.playerId}` : 'No active lot'}
+              {activeLot ? `#${activeLot.lotOrder} - ${lotNameFromAuctionLot(activeLot)}` : 'No active lot'}
             </p>
             <p className="mt-1 text-xs text-white/65">
               {activeLot ? `Bid: ${activeLot.currentBid || 0} | Time Left: ${activeLot.timeLeft || 0}s` : 'Start auction or activate next lot to begin.'}
@@ -1841,7 +2166,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
             >
               {lots.map((lot) => (
                 <option key={lot.id} value={lot.id}>
-                  #{lot.lotOrder} - {lot.player?.name || lot.playerId}
+                  #{lot.lotOrder} - {lotNameFromAuctionLot(lot)}
                 </option>
               ))}
             </select>
@@ -1850,7 +2175,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
           <div className="mt-2 rounded border border-white/20 bg-black/50 p-3">
             <p className="text-[10px] font-bold tracking-[0.16em] text-white/55 uppercase">Selected Lot</p>
             <p className="mt-1 text-sm font-bold text-white">
-              {selectedLot ? `#${selectedLot.lotOrder} - ${selectedLot.player?.name || selectedLot.playerId}` : 'No lot selected'}
+              {selectedLot ? `#${selectedLot.lotOrder} - ${lotNameFromAuctionLot(selectedLot)}` : 'No lot selected'}
             </p>
             <p className="mt-1 text-xs text-white/65">
               {selectedLot
@@ -2018,7 +2343,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
                 <option key={player.id} value={player.id}>{player.name}</option>
               ))}
             </select>
-          ) : (lot.player?.name || lot.playerId),
+          ) : lotNameFromAuctionLot(lot),
           toText(lot.currentBid),
           editingId === lot.id ? (
             <span className="text-white/60">Managed by live bids</span>

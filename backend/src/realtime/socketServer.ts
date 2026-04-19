@@ -95,14 +95,17 @@ const runTickerCycle = async () => {
   tickerInFlight = true;
   try {
     const sockets = await io.fetchSockets();
-    const eventIds = new Set<string>();
+    const socketEventIds = new Set<string>();
 
     sockets.forEach((socket) => {
       const eventId = getSocketEventId(socket);
       if (eventId) {
-        eventIds.add(eventId);
+        socketEventIds.add(eventId);
       }
     });
+
+    const tickableEventIds = await auctionService.getTickableEventIds();
+    const eventIds = new Set<string>([...socketEventIds, ...tickableEventIds]);
 
     for (const cachedEventId of Array.from(lastTimerSnapshots.keys())) {
       if (!eventIds.has(cachedEventId)) {
@@ -124,9 +127,9 @@ const runTickerCycle = async () => {
 
         if (shouldEmitTimer && shouldEmitTimerTick(eventId, timerSnapshot)) {
           const timerPayload = {
-          eventId,
+            eventId,
             ...timerSnapshot,
-          serverNow: Date.now(),
+            serverNow: Date.now(),
           };
 
           io.to(eventRoom(eventId)).emit('timer_tick', timerPayload);
