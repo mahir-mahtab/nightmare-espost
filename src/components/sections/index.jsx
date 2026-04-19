@@ -4,4 +4,5 @@ export { default as AchievementsSection } from './AchievementsSection.jsx';
 export { default as EventSpotlightSection } from './EventSpotlightSection.jsx';
 export { default as TeamsSection } from './TeamsSection.jsx';
 export { default as ContentCreatorsSection } from './ContentCreatorsSection.jsx';
+export { default as SponsorShowcaseSection } from './SponsorShowcaseSection.jsx';
 export { default as StayConnectedSection } from './StayConnectedSection.jsx';

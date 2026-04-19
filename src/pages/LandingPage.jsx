@@ -5,7 +5,7 @@ import {
   AchievementsSection,
   EventSpotlightSection,
   TeamsSection,
-  ContentCreatorsSection,
+  SponsorShowcaseSection,
   StayConnectedSection,
 } from '../components/sections/index.jsx';
 
@@ -15,10 +15,9 @@ const LandingPage = () => (
     <main className="pt-24">
       <HeroSection />
       <StatsSection />
-      <AchievementsSection />
       <EventSpotlightSection />
       <TeamsSection />
-      <ContentCreatorsSection />
+      <SponsorShowcaseSection />
       <StayConnectedSection />
     </main>
     <Footer />

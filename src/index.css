@@ -134,65 +134,65 @@ button:not(:disabled):active {
 }
 
 /* Primary buttons (red background) */
-button[className*="bg-primary"],
-button[className*="border-primary"][className*="text-primary"] {
+button[class*="bg-primary"],
+button[class*="border-primary"][class*="text-primary"] {
   @apply transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,0,0,0.5)];
 }
 
-button[className*="bg-primary"]:hover:not(:disabled) {
+button[class*="bg-primary"]:hover:not(:disabled) {
   animation: var(--animate-btn-hover);
   @apply bg-red-600;
   box-shadow: 0 0 20px -5px rgba(255, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-button[className*="bg-primary"]:active:not(:disabled) {
+button[class*="bg-primary"]:active:not(:disabled) {
   animation: var(--animate-btn-press);
   box-shadow: 0 0 10px -5px rgba(255, 0, 0, 0.5);
 }
 
 /* Border-only buttons with primary text */
-button[className*="border-primary"]:not([className*="bg-primary"]):hover:not(:disabled) {
+button[class*="border-primary"]:not([class*="bg-primary"]):hover:not(:disabled) {
   animation: var(--animate-btn-hover);
   @apply border-red-400 text-red-300;
   box-shadow: 0 0 15px -5px rgba(255, 0, 0, 0.4);
 }
 
-button[className*="border-primary"]:not([className*="bg-primary"]):active:not(:disabled) {
+button[class*="border-primary"]:not([class*="bg-primary"]):active:not(:disabled) {
   animation: var(--animate-btn-press);
   box-shadow: 0 0 8px -5px rgba(255, 0, 0, 0.3);
 }
 
 /* Red accent buttons */
-button[className*="border-red-500"] {
+button[class*="border-red-500"] {
   @apply transition-all duration-300;
 }
 
-button[className*="border-red-500"]:hover:not(:disabled) {
+button[class*="border-red-500"]:hover:not(:disabled) {
   animation: var(--animate-btn-hover);
   @apply border-red-400 text-red-200;
   box-shadow: 0 0 15px -5px rgba(255, 0, 0, 0.5);
 }
 
-button[className*="border-red-500"]:active:not(:disabled) {
+button[class*="border-red-500"]:active:not(:disabled) {
   animation: var(--animate-btn-press);
   box-shadow: 0 0 8px -5px rgba(255, 0, 0, 0.3);
 }
 
 /* White/gray border buttons */
-button[className*="border-white"],
-button[className*="border-white/"] {
+button[class*="border-white"],
+button[class*="border-white/"] {
   @apply transition-all duration-300;
 }
 
-button[className*="border-white"]:hover:not(:disabled),
-button[className*="border-white/"]:hover:not(:disabled) {
+button[class*="border-white"]:hover:not(:disabled),
+button[class*="border-white/"]:hover:not(:disabled) {
   animation: var(--animate-btn-hover);
   @apply border-white text-white;
   box-shadow: 0 0 15px -5px rgba(255, 255, 255, 0.3);
 }
 
-button[className*="border-white"]:active:not(:disabled),
-button[className*="border-white/"]:active:not(:disabled) {
+button[class*="border-white"]:active:not(:disabled),
+button[class*="border-white/"]:active:not(:disabled) {
   animation: var(--animate-btn-press);
   box-shadow: 0 0 8px -5px rgba(255, 255, 255, 0.2);
 }
