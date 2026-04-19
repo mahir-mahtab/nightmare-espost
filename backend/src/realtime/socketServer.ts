@@ -171,11 +171,11 @@ const startGlobalTicker = () => {
 };
 
 export const socketServer = {
-  init(httpServer: HttpServer, corsOrigin: string) {
+  init(httpServer: HttpServer) {
     io = new SocketIOServer(httpServer, {
       cors: {
-        origin: corsOrigin,
-        credentials: true,
+        origin: '*',
+        credentials: false,
       },
     });
 
