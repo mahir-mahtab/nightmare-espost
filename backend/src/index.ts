@@ -52,7 +52,7 @@ app.use(errorHandler);
 // Start server
 const PORT = env.PORT;
 
-socketServer.init(httpServer, env.CORS_ORIGIN);
+socketServer.init(httpServer);
 
 httpServer.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT}`);
