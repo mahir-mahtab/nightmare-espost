@@ -92,7 +92,7 @@
 }
 
 .skew-btn span {
-  @apply inline-block skew-x-[20deg];
+  @apply inline-block skew-x-20;
 }
 
 .cyber-btn {
@@ -285,7 +285,7 @@ button:disabled {
 
 /* Gradient Text */
 .gradient-text {
-  @apply bg-gradient-to-r from-white via-primary to-white bg-clip-text text-transparent;
+  @apply bg-linear-to-r from-white via-primary to-white bg-clip-text text-transparent;
   background-size: 200% auto;
 }
 

@@ -2295,7 +2295,7 @@ const DataTable = ({ columns, rows, emptyText }) => (
     {rows.length === 0 ? (
       <p className="p-4 text-sm text-white/60">{emptyText}</p>
     ) : (
-      <table className="w-full min-w-[720px] border-collapse text-sm">
+      <table className="w-full min-w-180 border-collapse text-sm">
         <thead className="bg-white/5">
           <tr>
             {columns.map((col) => (

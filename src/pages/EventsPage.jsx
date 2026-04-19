@@ -120,7 +120,7 @@ const EventCard = ({ summary, auctionLots }) => {
           <img
             src={sponsorImageUrl}
             alt={`${summary.title} sponsor`}
-            className="h-10 w-auto max-w-[200px] object-contain sm:h-14"
+            className="h-10 w-auto max-w-50 object-contain sm:h-14"
             onError={(event) => {
               event.currentTarget.src = '/sponsor.png';
             }}
@@ -128,7 +128,7 @@ const EventCard = ({ summary, auctionLots }) => {
         </div>
       </div>
 
-      <div className="relative flex flex-col justify-center border-t border-white/10 bg-white/[0.02] p-8 xl:col-span-4 xl:border-t-0 xl:border-l">
+      <div className="relative flex flex-col justify-center border-t border-white/10 bg-white/2 p-8 xl:col-span-4 xl:border-t-0 xl:border-l">
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1">
           <MetricCard icon={Users} value={summary.registration} label="Registrations" />
           <MetricCard icon={Target} value={summary.slots} label="Slots" />
@@ -172,7 +172,7 @@ const TeamGrid = ({ teams }) => (
             <div className="h-full w-full bg-[radial-gradient(circle_at_14%_14%,rgba(255,90,0,0.38),transparent_42%),radial-gradient(circle_at_82%_84%,rgba(250,204,21,0.2),transparent_45%)]" />
           </div>
           <div className="relative flex items-start gap-3">
-            <img src={team.ownerAvatar} alt={team.ownerName} className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-white/45 object-cover shadow-[0_8px_14px_rgba(0,0,0,0.35)] md:h-13 md:w-13" />
+            <img src={team.ownerAvatar} alt={team.ownerName} className="h-12 w-12 shrink-0 rounded-full border-2 border-white/45 object-cover shadow-[0_8px_14px_rgba(0,0,0,0.35)] md:h-13 md:w-13" />
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold tracking-[0.18em] text-white/60 uppercase">Owner</p>
               <h3 className="line-clamp-2 font-display text-sm font-black text-white md:text-base">{team.ownerName}</h3>
@@ -183,7 +183,7 @@ const TeamGrid = ({ teams }) => (
               <p className="text-[9px] font-bold tracking-[0.16em] text-white/45 uppercase">Available Coins</p>
               <p className="mt-0.5 font-display text-lg font-black text-primary md:text-xl">{team.coinsLeft}</p>
             </div>
-            <div className="h-8 w-px bg-gradient-to-b from-white/10 via-white/20 to-white/10" />
+            <div className="h-8 w-px bg-linear-to-b from-white/10 via-white/20 to-white/10" />
             <div className="flex-1 text-right">
               <p className="text-[9px] font-bold tracking-[0.16em] text-white/45 uppercase">Sold</p>
               <p className="mt-0.5 font-display text-lg font-black text-white md:text-xl">{team.playersSold || 0}</p>
@@ -386,7 +386,7 @@ const AuctionHub = ({
                   value={bidAmount}
                   onChange={(event) => setBidAmount(event.target.value)}
                   disabled={!canBid}
-                  className="h-12 w-full min-w-[160px] flex-1 rounded border border-white/30 bg-white px-3 text-center font-display text-2xl font-black text-zinc-950 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-zinc-200"
+                  className="h-12 w-full min-w-40 flex-1 rounded border border-white/30 bg-white px-3 text-center font-display text-2xl font-black text-zinc-950 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-zinc-200"
                 />
                 <button
                   type="button"
@@ -419,7 +419,7 @@ const AuctionHub = ({
                 <Motion.div
                   animate={{ width: `${Math.min(100, ((selectedAuction?.timeLeft || 0) / (auction.lotDuration || 30)) * 100)}%` }}
                   transition={{ duration: 1, ease: 'linear' }}
-                  className="h-full bg-gradient-to-r from-amber-300 via-orange-500 to-red-500"
+                  className="h-full bg-linear-to-r from-amber-300 via-orange-500 to-red-500"
                 />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -569,7 +569,7 @@ const AuctionStateList = ({
                 <p className="text-xs font-semibold text-white/75">{lot.playerRole || '-'}</p>
 
                 <div>
-                  <span className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold tracking-[0.1em] uppercase ${lotStatusStyle}`}>
+                  <span className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold tracking-widest uppercase ${lotStatusStyle}`}>
                     {lotStatus}
                   </span>
                 </div>
@@ -611,7 +611,7 @@ const SoldAnnouncementPopup = ({ data, onClose }) => {
       initial={{ opacity: 0, y: -16, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -16, scale: 0.96 }}
-      className="fixed top-4 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2"
+      className="fixed top-4 left-1/2 z-70 w-[calc(100%-2rem)] max-w-md -translate-x-1/2"
     >
       <div className="rounded-xl border border-emerald-400/45 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(0,0,0,0.78))] p-4 shadow-[0_16px_36px_rgba(0,0,0,0.5)] backdrop-blur">
         <div className="flex items-start justify-between gap-3">
@@ -1448,9 +1448,9 @@ const EventsPage = () => {
             >
               <div className="flex items-start gap-3">
                 {error ? (
-                  <AlertTriangle className="mt-0.5 h-4 md:h-5 w-4 md:w-5 flex-shrink-0" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 md:h-5 md:w-5" />
                 ) : (
-                  <CheckCircle2 className="mt-0.5 h-4 md:h-5 w-4 md:w-5 flex-shrink-0" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 md:h-5 md:w-5" />
                 )}
                 <span>{error || actionState}</span>
               </div>

@@ -28,7 +28,7 @@ const EventSubNav = ({ eventId }) => (
               {isActive && (
                 <Motion.span
                   layoutId="active-event-tab"
-                  className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/8 via-primary/20 to-primary/8"
+                  className="absolute inset-0 rounded-md bg-linear-to-r from-primary/8 via-primary/20 to-primary/8"
                   transition={{ type: 'spring', stiffness: 300, damping: 28, delay: index * 0.01 }}
                 />
               )}

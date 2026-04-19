@@ -12,7 +12,7 @@ import {
 const LandingPage = () => (
   <div className="min-h-screen bg-black text-white">
     <Navbar />
-    <main className="pt-24">
+    <main className="pt-16">
       <HeroSection />
       <StatsSection />
       <EventSpotlightSection />

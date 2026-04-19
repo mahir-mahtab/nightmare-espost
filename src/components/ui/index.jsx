@@ -33,7 +33,7 @@ export const StatBlock = ({ value, label, icon }) => {
   const IconEl = icon;
   return (
     <div className="group relative">
-      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-transparent opacity-0 blur transition-opacity group-hover:opacity-100" />
+      <div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-transparent opacity-0 blur transition-opacity group-hover:opacity-100" />
       <div className="relative border border-white/10 bg-black p-5 transition-colors group-hover:border-primary/50">
         <div className="mb-3 flex items-center gap-2">
           <IconEl className="h-4 w-4 text-primary" />
@@ -66,7 +66,7 @@ export const AchievementCard = ({ rank, placement, team, tag, event, date, color
         accent={color === 'silver'}
       >
         {/* Top gradient bar */}
-        <div className={`h-1.5 w-full bg-gradient-to-r ${colors.gradient}`} />
+        <div className={`h-1.5 w-full bg-linear-to-r ${colors.gradient}`} />
         
         {/* Certificate Image */}
         {image && (
@@ -74,7 +74,7 @@ export const AchievementCard = ({ rank, placement, team, tag, event, date, color
             className="relative overflow-hidden"
             onClick={() => setIsModalOpen(true)}
           >
-            <div className="aspect-[4/3] overflow-hidden bg-black">
+            <div className="aspect-4/3 overflow-hidden bg-black">
               <img 
                 src={image} 
                 alt={`${team} certificate`}
@@ -99,7 +99,7 @@ export const AchievementCard = ({ rank, placement, team, tag, event, date, color
             <div className="flex items-center gap-2">
               <Trophy className={`h-5 w-5 ${colors.icon}`} />
               <div className="flex flex-col">
-                <span className={`text-[10px] font-black tracking-[0.15em] uppercase bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+                <span className={`text-[10px] font-black tracking-[0.15em] uppercase bg-linear-to-r ${colors.gradient} bg-clip-text text-transparent`}>
                   {rank}
                 </span>
                 {placement && (
@@ -117,7 +117,7 @@ export const AchievementCard = ({ rank, placement, team, tag, event, date, color
           </h3>
           
           <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-            <span className="text-[9px] font-bold tracking-[0.1em] text-white/40 uppercase">{event}</span>
+            <span className="text-[9px] font-bold tracking-widest text-white/40 uppercase">{event}</span>
             <span className="text-[9px] text-white/30">{date}</span>
           </div>
         </div>
@@ -162,7 +162,7 @@ export const AchievementCard = ({ rank, placement, team, tag, event, date, color
             {/* Caption */}
             <div className="mt-4 text-center">
               <h4 className="font-display text-xl font-bold uppercase text-white">{team}</h4>
-              <p className={`mt-1 text-sm font-bold uppercase bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+              <p className={`mt-1 text-sm font-bold uppercase bg-linear-to-r ${colors.gradient} bg-clip-text text-transparent`}>
                 {rank} • {event}
               </p>
             </div>
@@ -176,7 +176,7 @@ export const AchievementCard = ({ rank, placement, team, tag, event, date, color
 // Team Card
 export const TeamCard = ({ name, role, status, game }) => (
   <CyberCard className="group relative">
-    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+    <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
     <div className="relative p-6">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center border border-primary/30 bg-primary/10">

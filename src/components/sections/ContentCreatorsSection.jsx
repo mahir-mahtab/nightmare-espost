@@ -77,7 +77,7 @@ const ContentCreatorsSection = () => {
               {CONTENT_CREATORS.map((creator, index) => (
                 <Motion.div
                   key={creator.name}
-                  className="group relative min-w-[calc(20%-1rem)] flex-shrink-0"
+                  className="group relative min-w-[calc(20%-1rem)] shrink-0"
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
@@ -97,7 +97,7 @@ const ContentCreatorsSection = () => {
                         className="h-full w-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:brightness-110"
                       />
                       {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black via-black/20 to-transparent opacity-80" />
                       
                       {/* Role Badge */}
                       <div className="absolute top-4 right-4 opacity-0 transition-opacity group-hover:opacity-100">
@@ -115,7 +115,7 @@ const ContentCreatorsSection = () => {
                     </div>
                     
                     {/* Bottom Accent Line */}
-                    <div className="h-1 w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent transition-all group-hover:via-primary" />
+                    <div className="h-1 w-full bg-linear-to-r from-transparent via-primary/50 to-transparent transition-all group-hover:via-primary" />
                   </div>
                 </Motion.div>
               ))}
