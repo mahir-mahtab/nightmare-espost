@@ -59,6 +59,7 @@ async function createTestEvent() {
     body: JSON.stringify([
       {
         name: 'Test Owner',
+        email: 'test.owner.auth@example.com',
         password: 'owner1234',
       },
     ]),

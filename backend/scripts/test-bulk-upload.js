@@ -53,10 +53,10 @@ async function testBulkUploadOwners() {
   console.log('👥 Test 1: Bulk Upload Owners');
   
   const ownersData = [
-    { name: 'Owner Alpha', password: 'owner-alpha-123', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
-    { name: 'Owner Beta', password: 'owner-beta-123', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
-    { name: 'Owner Gamma', password: 'owner-gamma-123', avatarUrl: 'https://i.pravatar.cc/150?u=gamma' },
-    { name: 'Owner Delta', password: 'owner-delta-123', avatarUrl: 'https://i.pravatar.cc/150?u=delta' },
+    { name: 'Owner Alpha', email: 'owner.alpha.bulk@example.com', password: 'owner-alpha-123', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
+    { name: 'Owner Beta', email: 'owner.beta.bulk@example.com', password: 'owner-beta-123', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
+    { name: 'Owner Gamma', email: 'owner.gamma.bulk@example.com', password: 'owner-gamma-123', avatarUrl: 'https://i.pravatar.cc/150?u=gamma' },
+    { name: 'Owner Delta', email: 'owner.delta.bulk@example.com', password: 'owner-delta-123', avatarUrl: 'https://i.pravatar.cc/150?u=delta' },
   ];
   
   try {
@@ -135,11 +135,11 @@ async function testBulkUploadPlayers() {
   console.log('⚡ Test 3: Bulk Upload Players');
   
   const playersData = [
-    { name: 'Player One', role: 'Duelist', rankPoint: 85, basePrice: 500, imageUrl: 'https://i.pravatar.cc/150?u=p1' },
-    { name: 'Player Two', role: 'Controller', rankPoint: 90, basePrice: 800, imageUrl: 'https://i.pravatar.cc/150?u=p2' },
-    { name: 'Player Three', role: 'Sentinel', rankPoint: 75, basePrice: 300, imageUrl: 'https://i.pravatar.cc/150?u=p3' },
-    { name: 'Player Four', role: 'Initiator', rankPoint: 80, basePrice: 600, imageUrl: 'https://i.pravatar.cc/150?u=p4' },
-    { name: 'Player Five', role: 'Duelist', rankPoint: 95, basePrice: 1000, imageUrl: 'https://i.pravatar.cc/150?u=p5' },
+    { name: 'Player One', email: 'player.one.bulk@example.com', role: 'Duelist', rankPoint: 85, basePrice: 500, imageUrl: 'https://i.pravatar.cc/150?u=p1' },
+    { name: 'Player Two', email: 'player.two.bulk@example.com', role: 'Controller', rankPoint: 90, basePrice: 800, imageUrl: 'https://i.pravatar.cc/150?u=p2' },
+    { name: 'Player Three', email: 'player.three.bulk@example.com', role: 'Sentinel', rankPoint: 75, basePrice: 300, imageUrl: 'https://i.pravatar.cc/150?u=p3' },
+    { name: 'Player Four', email: 'player.four.bulk@example.com', role: 'Initiator', rankPoint: 80, basePrice: 600, imageUrl: 'https://i.pravatar.cc/150?u=p4' },
+    { name: 'Player Five', email: 'player.five.bulk@example.com', role: 'Duelist', rankPoint: 95, basePrice: 1000, imageUrl: 'https://i.pravatar.cc/150?u=p5' },
   ];
   
   try {

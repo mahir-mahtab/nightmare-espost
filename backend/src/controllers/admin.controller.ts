@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { authService } from '../services/authService.js';
+import { cloudinaryService } from '../services/cloudinaryService.js';
 import { eventService } from '../services/eventService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { parseDataFile } from '../utils/csvParser.js';
@@ -25,6 +26,7 @@ import {
   eventPlayerParamSchema,
   eventLotParamSchema,
   listEventsQuerySchema,
+  uploadImageBodySchema,
 } from '../utils/validators.js';
 
 export const adminController = {
@@ -176,6 +178,7 @@ export const adminController = {
       const passwordHash = await bcrypt.hash(ownerData.password, 10);
       const [owner] = await eventService.createOwners(eventId, [{
         name: ownerData.name,
+        email: ownerData.email,
         avatarUrl: ownerData.avatarUrl,
         passwordHash,
       }]);
@@ -196,6 +199,7 @@ export const adminController = {
       const ownerData = updateOwnerSchema.parse(req.body);
       const payload: any = {
         ...(ownerData.name !== undefined ? { name: ownerData.name } : {}),
+        ...(ownerData.email !== undefined ? { email: ownerData.email } : {}),
         ...(ownerData.avatarUrl !== undefined ? { avatarUrl: ownerData.avatarUrl } : {}),
       };
 
@@ -390,6 +394,7 @@ export const adminController = {
       const ownersWithHashes = await Promise.all(
         owners.map(async (owner) => ({
           name: owner.name,
+          email: owner.email,
           avatarUrl: owner.avatarUrl,
           passwordHash: await bcrypt.hash(owner.password, 10),
         })),
@@ -427,6 +432,41 @@ export const adminController = {
       res.status(201).json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Upload image to Cloudinary
+  async uploadImage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { folder } = uploadImageBodySchema.parse({
+        folder: typeof req.body?.folder === 'string' ? req.body.folder : undefined,
+      });
+
+      if (!req.file) {
+        throw new AppError(
+          'Please provide an image file in the "image" form-data field.',
+          400,
+          'IMAGE_FILE_REQUIRED'
+        );
+      }
+
+      const uploaded = await cloudinaryService.uploadImageBuffer(req.file.buffer, { folder });
+      const optimizedUrl = cloudinaryService.getSquareOptimizedUrl(uploaded.public_id);
+
+      res.status(201).json({
+        success: true,
+        data: {
+          publicId: uploaded.public_id,
+          originalUrl: uploaded.secure_url,
+          imageUrl: optimizedUrl,
+          width: uploaded.width,
+          height: uploaded.height,
+          format: uploaded.format,
+          bytes: uploaded.bytes,
+        },
       });
     } catch (error) {
       next(error);

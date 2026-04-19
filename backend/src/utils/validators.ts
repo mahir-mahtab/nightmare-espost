@@ -4,6 +4,8 @@ const personNameRegex = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const teamNameRegex = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const playerRoleRegex = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
 const eventIdOrSlugRegex = /^[A-Za-z0-9-]{3,120}$/;
+const cloudinaryFolderRegex = /^[A-Za-z0-9/_-]{1,120}$/;
+const emailSchema = z.string().trim().email().max(255).transform((value) => value.toLowerCase());
 
 // Event validation schemas
 export const createEventSchema = z.object({
@@ -18,6 +20,7 @@ export const createEventSchema = z.object({
   streamStartTime: z.string().optional(),
   auctionWindowSeconds: z.number().int().min(10).max(300).default(30),
   bannerUrl: z.string().url().optional(),
+  sponsorImageUrl: z.string().url().optional(),
 });
 
 export const updateEventSchema = createEventSchema.partial();
@@ -34,12 +37,14 @@ export const updateTeamSchema = createTeamSchema.partial();
 // Owner validation schemas
 export const createOwnerSchema = z.object({
   name: z.string().min(2).max(255),
+  email: emailSchema,
   password: z.string().min(4).max(100),
   avatarUrl: z.string().url().optional(),
 });
 
 export const updateOwnerSchema = z.object({
   name: z.string().min(2).max(255).optional(),
+  email: emailSchema.optional(),
   password: z.string().min(4).max(100).optional(),
   avatarUrl: z.string().url().optional(),
 });
@@ -47,6 +52,7 @@ export const updateOwnerSchema = z.object({
 // Player validation schemas
 export const createPlayerSchema = z.object({
   name: z.string().min(2).max(255),
+  email: emailSchema,
   role: z.string().min(1).max(50),
   rankPoint: z.number().int().min(0).max(100).default(0),
   basePrice: z.number().int().min(0).default(0),
@@ -94,6 +100,7 @@ export const eventLoginSchema = z.object({
 export const ownerSignupSchema = z.object({
   eventPassword: z.string().min(4).max(50),
   ownerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Owner name format is invalid'),
+  ownerEmail: emailSchema,
   ownerPassword: z.string().trim().min(6).max(100),
   avatarUrl: z.string().trim().url().optional(),
   teamName: z.string().trim().min(2).max(100).regex(teamNameRegex, 'Team name format is invalid'),
@@ -103,6 +110,7 @@ export const ownerSignupSchema = z.object({
 export const playerSignupSchema = z.object({
   eventPassword: z.string().min(4).max(50),
   playerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Player name format is invalid'),
+  playerEmail: emailSchema,
   playerRole: z.string().trim().min(2).max(40).regex(playerRoleRegex, 'Player role format is invalid'),
   rankPoint: z.number().int().min(0).max(100).default(0),
   basePrice: z.number().int().min(0).max(100000).default(0),
@@ -169,6 +177,10 @@ export const eventLotParamSchema = z.object({
 
 export const listEventsQuerySchema = z.object({
   status: z.enum(['UPCOMING', 'LIVE', 'COMPLETED']).optional(),
+});
+
+export const uploadImageBodySchema = z.object({
+  folder: z.string().trim().regex(cloudinaryFolderRegex, 'Invalid upload folder format').optional(),
 });
 
 export const playersQuerySchema = z.object({

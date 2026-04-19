@@ -54,8 +54,8 @@ async function setupTestEvent() {
   
   // Create owners
   const ownersData = [
-    { name: 'Team Alpha Owner', password: 'owner-alpha-123', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
-    { name: 'Team Beta Owner', password: 'owner-beta-123', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
+    { name: 'Team Alpha Owner', email: 'owner.alpha.public@example.com', password: 'owner-alpha-123', avatarUrl: 'https://i.pravatar.cc/150?u=alpha' },
+    { name: 'Team Beta Owner', email: 'owner.beta.public@example.com', password: 'owner-beta-123', avatarUrl: 'https://i.pravatar.cc/150?u=beta' },
   ];
   
   const ownersResponse = await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/owners`, {
@@ -89,9 +89,9 @@ async function setupTestEvent() {
   
   // Create players
   const playersData = [
-    { name: 'Player One', role: 'Duelist', rankPoint: 85, basePrice: 500 },
-    { name: 'Player Two', role: 'Controller', rankPoint: 90, basePrice: 800 },
-    { name: 'Player Three', role: 'Sentinel', rankPoint: 75, basePrice: 300 },
+    { name: 'Player One', email: 'player.one.public@example.com', role: 'Duelist', rankPoint: 85, basePrice: 500 },
+    { name: 'Player Two', email: 'player.two.public@example.com', role: 'Controller', rankPoint: 90, basePrice: 800 },
+    { name: 'Player Three', email: 'player.three.public@example.com', role: 'Sentinel', rankPoint: 75, basePrice: 300 },
   ];
   
   await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/players`, {

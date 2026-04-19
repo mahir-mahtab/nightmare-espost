@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { MulterError } from 'multer';
 import { ZodError } from 'zod';
 import {
   PrismaClientInitializationError,
@@ -59,8 +60,26 @@ export const errorHandler = (
     return respond(400, 'Request validation failed. Please check your input fields.', 'VALIDATION_ERROR', details);
   }
 
+  if (err instanceof MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return respond(413, 'Uploaded image is too large. Maximum allowed size is 8 MB.', 'IMAGE_FILE_TOO_LARGE');
+    }
+
+    logger.error(`[400] UPLOAD_ERROR: ${err.message}`);
+    return respond(400, 'Image upload failed. Please try a different file.', 'UPLOAD_ERROR');
+  }
+
   if (err instanceof PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
+      const targetFields = Array.isArray((err.meta as any)?.target)
+        ? ((err.meta as any).target as string[])
+        : [];
+      const targetString = String((err.meta as any)?.target || '').toLowerCase();
+
+      if (targetFields.includes('email') || targetString.includes('email')) {
+        return respond(409, 'This email is already in use for this event. Please use a different email address.', 'EMAIL_CONFLICT');
+      }
+
       return respond(409, 'A record with the same unique value already exists.', 'DB_UNIQUE_CONSTRAINT');
     }
 

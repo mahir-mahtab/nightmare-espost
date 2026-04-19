@@ -15,6 +15,7 @@ const toOwnerName = (index) => {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   return `Owner ${letters[index % 26]}`;
 };
+const toOwnerEmail = (index, suffix) => `owner${String(index + 1).padStart(2, '0')}.${suffix}@example.com`;
 const toTeamName = (index) => `Franchise ${String(index + 1).padStart(2, '0')}`;
 
 const ROLES = ['IGL', 'Assaulter', 'Support', 'Sniper', 'Rusher'];
@@ -29,6 +30,8 @@ const buildPlayers = (count = 28) => {
     basePrice: DEFAULT_PLAYER_BASE_PRICE,
   }));
 };
+
+const toPlayerEmail = (index, suffix) => `player${String(index + 1).padStart(2, '0')}.${suffix}@example.com`;
 
 const request = async (path, { method = 'GET', body, token } = {}) => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -88,6 +91,7 @@ async function run() {
       body: {
         eventPassword,
         ownerName: toOwnerName(index),
+        ownerEmail: toOwnerEmail(index, suffix),
         ownerPassword: `owner${String(index + 1).padStart(2, '0')}123`,
         teamName: toTeamName(index),
         coinsLeft: 25000,
@@ -98,12 +102,13 @@ async function run() {
   const playersPayload = buildPlayers(30);
 
   // Create players through event signup flow so each request includes event password.
-  for (const player of playersPayload) {
+  for (const [index, player] of playersPayload.entries()) {
     await request(`/api/events/${event.id}/signup/player`, {
       method: 'POST',
       body: {
         eventPassword,
         playerName: player.name,
+        playerEmail: toPlayerEmail(index, suffix),
         playerRole: player.role,
         rankPoint: player.rankPoint,
         basePrice: player.basePrice,

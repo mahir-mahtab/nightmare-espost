@@ -1,11 +1,36 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { adminController } from '../controllers/admin.controller.js';
+import { AppError } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 
 const router: Router = Router();
+const allowedImageMimeTypes = new Set([
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/avif',
+	'image/gif',
+]);
+
+const upload = multer({
+	storage: multer.memoryStorage(),
+	limits: {
+		fileSize: 8 * 1024 * 1024,
+	},
+	fileFilter: (_req, file, callback) => {
+		if (!allowedImageMimeTypes.has(file.mimetype)) {
+			callback(new AppError('Only jpeg, png, webp, avif, and gif image files are allowed.', 400, 'IMAGE_TYPE_INVALID'));
+			return;
+		}
+
+		callback(null, true);
+	},
+});
 
 // Public admin routes
 router.post('/login', adminController.login);
+router.post('/upload/image', upload.single('image'), adminController.uploadImage);
 
 // Protected admin routes
 router.use(requireAdmin);

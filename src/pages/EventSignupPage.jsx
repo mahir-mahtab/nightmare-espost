@@ -8,14 +8,35 @@ const toTrimmed = (value) => String(value || '').trim();
 
 const EVENT_PASSWORD_MIN = 4;
 const OWNER_PASSWORD_MIN = 6;
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 const NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const TEAM_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const ROLE_REGEX = /^[A-Za-z][A-Za-z0-9\s/-]{1,39}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const getSignupUploadFolder = (eventId, role) => `${toTrimmed(eventId)}/signup/${role}`;
+
+const validateImageFile = (file) => {
+  if (!file) {
+    return 'Please choose an image file to upload.';
+  }
+
+  if (!file.type.startsWith('image/')) {
+    return 'Please upload a valid image file.';
+  }
+
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return 'Image size must be 8 MB or less.';
+  }
+
+  return '';
+};
 
 const validateOwnerForm = (values) => {
   const ownerName = toTrimmed(values.ownerName);
   const teamName = toTrimmed(values.teamName);
   const eventPassword = toTrimmed(values.eventPassword);
+  const ownerEmail = toTrimmed(values.ownerEmail).toLowerCase();
   const ownerPassword = toTrimmed(values.ownerPassword);
   const avatarUrl = toTrimmed(values.avatarUrl);
   const coinsLeft = Number(values.coinsLeft);
@@ -25,6 +46,9 @@ const validateOwnerForm = (values) => {
   }
   if (!NAME_REGEX.test(ownerName)) {
     return 'Owner name format is invalid.';
+  }
+  if (!EMAIL_REGEX.test(ownerEmail)) {
+    return 'Owner email format is invalid.';
   }
   if (ownerPassword.length < OWNER_PASSWORD_MIN) {
     return 'Owner password must be at least 6 characters.';
@@ -49,6 +73,7 @@ const validateOwnerForm = (values) => {
 const validatePlayerForm = (values) => {
   const eventPassword = toTrimmed(values.eventPassword);
   const playerName = toTrimmed(values.playerName);
+  const playerEmail = toTrimmed(values.playerEmail).toLowerCase();
   const playerRole = toTrimmed(values.playerRole);
   const rankPoint = Number(values.rankPoint);
   const basePrice = Number(values.basePrice);
@@ -59,6 +84,9 @@ const validatePlayerForm = (values) => {
   }
   if (!NAME_REGEX.test(playerName)) {
     return 'Player name format is invalid.';
+  }
+  if (!EMAIL_REGEX.test(playerEmail)) {
+    return 'Player email format is invalid.';
   }
   if (!ROLE_REGEX.test(playerRole)) {
     return 'Player role format is invalid.';
@@ -89,10 +117,13 @@ const EventSignupPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [ownerUploadingImage, setOwnerUploadingImage] = useState(false);
+  const [playerUploadingImage, setPlayerUploadingImage] = useState(false);
 
   const [ownerForm, setOwnerForm] = useState({
     eventPassword: '',
     ownerName: '',
+    ownerEmail: '',
     ownerPassword: '',
     avatarUrl: '',
     teamName: '',
@@ -102,6 +133,7 @@ const EventSignupPage = () => {
   const [playerForm, setPlayerForm] = useState({
     eventPassword: '',
     playerName: '',
+    playerEmail: '',
     playerRole: '',
     rankPoint: 0,
     basePrice: 0,
@@ -149,6 +181,66 @@ const EventSignupPage = () => {
     };
   }, [eventId, signupType]);
 
+  const handleOwnerImageUpload = async (event) => {
+    const selectedFile = event.target.files?.[0];
+    setError('');
+    setSuccess('');
+
+    const validationMessage = validateImageFile(selectedFile);
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+
+    setOwnerUploadingImage(true);
+    try {
+      const uploaded = await eventsService.uploadPublicImage(selectedFile, {
+        folder: getSignupUploadFolder(eventId, 'owner'),
+      });
+
+      setOwnerForm((prev) => ({
+        ...prev,
+        avatarUrl: uploaded.imageUrl || uploaded.originalUrl || '',
+      }));
+      setSuccess('Avatar uploaded to Cloudinary successfully.');
+    } catch (uploadError) {
+      setError(uploadError.message || 'Avatar upload failed');
+    } finally {
+      setOwnerUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const handlePlayerImageUpload = async (event) => {
+    const selectedFile = event.target.files?.[0];
+    setError('');
+    setSuccess('');
+
+    const validationMessage = validateImageFile(selectedFile);
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+
+    setPlayerUploadingImage(true);
+    try {
+      const uploaded = await eventsService.uploadPublicImage(selectedFile, {
+        folder: getSignupUploadFolder(eventId, 'player'),
+      });
+
+      setPlayerForm((prev) => ({
+        ...prev,
+        imageUrl: uploaded.imageUrl || uploaded.originalUrl || '',
+      }));
+      setSuccess('Player image uploaded to Cloudinary successfully.');
+    } catch (uploadError) {
+      setError(uploadError.message || 'Player image upload failed');
+    } finally {
+      setPlayerUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
   const handleOwnerSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -160,11 +252,17 @@ const EventSignupPage = () => {
       return;
     }
 
+    if (ownerUploadingImage) {
+      setError('Please wait until avatar upload finishes.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await eventsService.signupOwner(eventId, {
         eventPassword: toTrimmed(ownerForm.eventPassword),
         ownerName: toTrimmed(ownerForm.ownerName),
+        ownerEmail: toTrimmed(ownerForm.ownerEmail).toLowerCase(),
         ownerPassword: toTrimmed(ownerForm.ownerPassword),
         avatarUrl: toTrimmed(ownerForm.avatarUrl) || undefined,
         teamName: toTrimmed(ownerForm.teamName),
@@ -175,6 +273,7 @@ const EventSignupPage = () => {
       setOwnerForm({
         eventPassword: '',
         ownerName: '',
+        ownerEmail: '',
         ownerPassword: '',
         avatarUrl: '',
         teamName: '',
@@ -198,11 +297,17 @@ const EventSignupPage = () => {
       return;
     }
 
+    if (playerUploadingImage) {
+      setError('Please wait until player image upload finishes.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await eventsService.signupPlayer(eventId, {
         eventPassword: toTrimmed(playerForm.eventPassword),
         playerName: toTrimmed(playerForm.playerName),
+        playerEmail: toTrimmed(playerForm.playerEmail).toLowerCase(),
         playerRole: toTrimmed(playerForm.playerRole),
         rankPoint: Number(playerForm.rankPoint),
         basePrice: Number(playerForm.basePrice),
@@ -213,6 +318,7 @@ const EventSignupPage = () => {
       setPlayerForm({
         eventPassword: '',
         playerName: '',
+        playerEmail: '',
         playerRole: '',
         rankPoint: 0,
         basePrice: 0,
@@ -291,6 +397,18 @@ const EventSignupPage = () => {
                 </label>
 
                 <label className="block">
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Owner Email</span>
+                  <input
+                    type="email"
+                    value={ownerForm.ownerEmail}
+                    onChange={(e) => setOwnerForm({ ...ownerForm, ownerEmail: e.target.value })}
+                    className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
+                    placeholder="owner@example.com"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label className="block">
                   <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Team Name</span>
                   <input
                     type="text"
@@ -316,7 +434,21 @@ const EventSignupPage = () => {
                 </label>
 
                 <label className="block sm:col-span-2">
-                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Avatar URL (optional)</span>
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Avatar Image Upload (optional)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                    onChange={handleOwnerImageUpload}
+                    disabled={ownerUploadingImage || submitting}
+                    className="h-11 w-full border border-white/20 bg-black/65 px-3 py-2 text-xs text-white/80 file:mr-3 file:border-0 file:bg-primary/20 file:px-3 file:py-1 file:text-[10px] file:font-bold file:uppercase file:tracking-[0.18em] file:text-primary disabled:opacity-60"
+                  />
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    {ownerUploadingImage ? 'Uploading avatar...' : 'Cloudinary will crop to square and optimize format.'}
+                  </p>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Avatar URL (auto-filled after upload)</span>
                   <input
                     type="url"
                     value={ownerForm.avatarUrl}
@@ -327,12 +459,23 @@ const EventSignupPage = () => {
                   />
                 </label>
 
+                {ownerForm.avatarUrl && (
+                  <div className="sm:col-span-2 overflow-hidden border border-white/15 bg-black/50 p-3">
+                    <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-white/45">Avatar Preview</p>
+                    <img
+                      src={ownerForm.avatarUrl}
+                      alt="Owner avatar preview"
+                      className="h-24 w-24 object-cover"
+                    />
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || ownerUploadingImage}
                   className="sm:col-span-2 h-11 border border-primary/60 bg-primary/20 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary disabled:opacity-50"
                 >
-                  {submitting ? 'Submitting...' : 'Complete Owner Signup'}
+                  {submitting ? 'Submitting...' : ownerUploadingImage ? 'Uploading Image...' : 'Complete Owner Signup'}
                 </button>
               </form>
             ) : (
@@ -374,6 +517,18 @@ const EventSignupPage = () => {
                 </label>
 
                 <label className="block">
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Player Email</span>
+                  <input
+                    type="email"
+                    value={playerForm.playerEmail}
+                    onChange={(e) => setPlayerForm({ ...playerForm, playerEmail: e.target.value })}
+                    className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
+                    placeholder="player@example.com"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label className="block">
                   <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Rank Point</span>
                   <input
                     type="number"
@@ -400,7 +555,21 @@ const EventSignupPage = () => {
                 </label>
 
                 <label className="block sm:col-span-2">
-                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Image URL (optional)</span>
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Player Image Upload (optional)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                    onChange={handlePlayerImageUpload}
+                    disabled={playerUploadingImage || submitting}
+                    className="h-11 w-full border border-white/20 bg-black/65 px-3 py-2 text-xs text-white/80 file:mr-3 file:border-0 file:bg-primary/20 file:px-3 file:py-1 file:text-[10px] file:font-bold file:uppercase file:tracking-[0.18em] file:text-primary disabled:opacity-60"
+                  />
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    {playerUploadingImage ? 'Uploading player image...' : 'Cloudinary will crop to square and optimize format.'}
+                  </p>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Image URL (auto-filled after upload)</span>
                   <input
                     type="url"
                     value={playerForm.imageUrl}
@@ -411,12 +580,23 @@ const EventSignupPage = () => {
                   />
                 </label>
 
+                {playerForm.imageUrl && (
+                  <div className="sm:col-span-2 overflow-hidden border border-white/15 bg-black/50 p-3">
+                    <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-white/45">Player Preview</p>
+                    <img
+                      src={playerForm.imageUrl}
+                      alt="Player preview"
+                      className="h-24 w-24 object-cover"
+                    />
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || playerUploadingImage}
                   className="sm:col-span-2 h-11 border border-primary/60 bg-primary/20 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary disabled:opacity-50"
                 >
-                  {submitting ? 'Submitting...' : 'Complete Player Signup'}
+                  {submitting ? 'Submitting...' : playerUploadingImage ? 'Uploading Image...' : 'Complete Player Signup'}
                 </button>
               </form>
             )}

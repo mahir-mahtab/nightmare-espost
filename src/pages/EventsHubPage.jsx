@@ -85,6 +85,20 @@ const EventsHubPage = () => {
                 Join the live event to participate in player acquisitions. Authenticate to gain full access to bidding and selection features.
               </p>
 
+              <div className="mt-8 w-full rounded-2xl border-2 border-primary/40 bg-[linear-gradient(135deg,rgba(255,0,0,0.12),rgba(0,0,0,0.85))] p-6 sm:p-8">
+                <p className="mb-4 text-[11px] font-black tracking-[0.3em] text-primary/80 uppercase">Proudly Presented By</p>
+                <div className="flex min-h-24 items-center justify-center rounded-xl border border-white/25 bg-white/8 px-6 py-4 backdrop-blur-sm sm:min-h-28">
+                  <img
+                    src={eventItem.sponsorImageUrl || '/sponsor.png'}
+                    alt={`${eventItem.title} sponsor`}
+                    className="h-16 w-auto max-w-xs object-contain sm:h-20 sm:max-w-md"
+                    onError={(event) => {
+                      event.currentTarget.src = '/sponsor.png';
+                    }}
+                  />
+                </div>
+              </div>
+
               <div className="mt-7 grid gap-4 sm:grid-cols-3">
                 <StatBox label="Game" value={eventItem.game} />
                 <StatBox label="Mode" value={eventItem.mode} />

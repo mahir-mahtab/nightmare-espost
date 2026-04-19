@@ -46,6 +46,7 @@ export const eventsController = {
             mode: event.mode,
             streamStartTime: event.streamStartTime,
             bannerUrl: event.bannerUrl,
+            sponsorImageUrl: event.sponsorImageUrl,
             status: event.status,
           },
           owners: owners.map((owner: any) => ({
@@ -77,6 +78,7 @@ export const eventsController = {
             mode: event.mode,
             streamStartTime: event.streamStartTime,
             bannerUrl: event.bannerUrl,
+            sponsorImageUrl: event.sponsorImageUrl,
             status: event.status,
           },
         },
@@ -172,6 +174,7 @@ export const eventsController = {
 
       const [owner] = await eventService.createOwners(event.id, [{
         name: payload.ownerName,
+        email: payload.ownerEmail,
         avatarUrl: payload.avatarUrl,
         passwordHash: await bcrypt.hash(payload.ownerPassword, 10),
       }]);
@@ -207,6 +210,7 @@ export const eventsController = {
       const event = await eventService.getEvent(eventId);
       const result = await eventService.createPlayers(event.id, [{
         name: payload.playerName,
+        email: payload.playerEmail,
         role: payload.playerRole,
         rankPoint: payload.rankPoint,
         basePrice: payload.basePrice,

@@ -2,11 +2,13 @@
   "owners": [
     {
       "name": "Owner Name 1",
+      "email": "owner1@example.com",
       "password": "ownerpass123",
       "avatarUrl": "https://images.unsplash.com/photo-1615109398623-88346a601842?w=200&h=200&fit=crop"
     },
     {
       "name": "Owner Name 2",
+      "email": "owner2@example.com",
       "password": "ownerpass456",
       "avatarUrl": "https://images.unsplash.com/photo-1628890920690-9e29d001f7f6?w=200&h=200&fit=crop"
     }
@@ -26,6 +28,7 @@
   "players": [
     {
       "name": "Player Name 1",
+      "email": "player1@example.com",
       "role": "IGL",
       "rankPoint": 95,
       "basePrice": 1000,
@@ -33,6 +36,7 @@
     },
     {
       "name": "Player Name 2",
+      "email": "player2@example.com",
       "role": "Assaulter",
       "rankPoint": 88,
       "basePrice": 850,
@@ -40,6 +44,7 @@
     },
     {
       "name": "Player Name 3",
+      "email": "player3@example.com",
       "role": "Support",
       "rankPoint": 85,
       "basePrice": 800,

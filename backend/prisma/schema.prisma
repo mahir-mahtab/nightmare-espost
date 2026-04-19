@@ -23,6 +23,7 @@ model Event {
   streamStartTime      String?        @map("stream_start_time")
   auctionWindowSeconds Int            @default(30) @map("auction_window_seconds")
   bannerUrl            String?        @map("banner_url")
+  sponsorImageUrl      String?        @map("sponsor_image_url")
   status               EventStatus    @default(UPCOMING)
   createdAt            DateTime       @default(now()) @map("created_at")
   updatedAt            DateTime       @updatedAt @map("updated_at")
@@ -65,6 +66,7 @@ model Owner {
   eventId    String   @map("event_id")
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name       String
+  email      String
   passwordHash String? @map("password_hash")
   avatarUrl  String?  @map("avatar_url")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -72,6 +74,7 @@ model Owner {
   teams          Team[]
 
   @@index([eventId])
+  @@unique([eventId, email])
   @@map("owners")
 }
 
@@ -80,6 +83,7 @@ model Player {
   eventId      String        @map("event_id")
   event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name         String
+  email        String
   role         String
   rankPoint    Int           @default(0) @map("rank_point")
   basePrice    Int           @default(0) @map("base_price")
@@ -94,6 +98,7 @@ model Player {
 
   @@index([eventId])
   @@index([status])
+  @@unique([eventId, email])
   @@map("players")
 }
 

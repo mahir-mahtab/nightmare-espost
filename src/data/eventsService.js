@@ -80,12 +80,14 @@ const mapSummary = (summary) => ({
   streamStart: summary.streamStartTime,
   auctionWindow: `${summary.auctionWindowSeconds}s per player`,
   banner: summary.bannerUrl,
+  sponsorImageUrl: summary.sponsorImageUrl,
   status: summary.status,
 });
 
 const mapOwner = (owner) => ({
   id: owner.id,
   name: owner.name,
+  email: owner.email,
   avatar: owner.avatarUrl,
   avatarUrl: owner.avatarUrl,
   teamId: owner.teamId || '',
@@ -106,6 +108,7 @@ const mapTeam = (team) => ({
 const mapPlayer = (player) => ({
   id: player.id,
   name: player.name,
+  email: player.email,
   teamId: player.soldToTeamId || 'unassigned',
   team: player.soldToTeam?.name || 'Unassigned',
   role: toRoleLabel(player.role),
@@ -163,6 +166,27 @@ export const eventsService = {
       method: 'POST',
       body: payload,
     });
+  },
+
+  async uploadPublicImage(file, { folder } = {}) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    if (folder) {
+      formData.append('folder', folder);
+    }
+
+    const response = await fetch(`${config.apiUrl}/admin/upload/image`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(formatApiError(payload, 'Image upload could not be completed'));
+    }
+
+    return payload.data;
   },
 
   async getEventSummary(eventId, sessionToken) {

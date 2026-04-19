@@ -49,7 +49,7 @@ async function setupAuctionData() {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${adminToken}`,
     },
-    body: JSON.stringify([{ name: 'Owner Auction', password: 'owner-auction-123', avatarUrl: 'https://i.pravatar.cc/150?u=auction' }]),
+    body: JSON.stringify([{ name: 'Owner Auction', email: 'owner.auction.logic@example.com', password: 'owner-auction-123', avatarUrl: 'https://i.pravatar.cc/150?u=auction' }]),
   });
   const ownerData = await ownerRes.json();
   ownerId = ownerData.data[0].id;
@@ -69,7 +69,7 @@ async function setupAuctionData() {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${adminToken}`,
     },
-    body: JSON.stringify([{ name: 'Auction Player', role: 'IGL', rankPoint: 90, basePrice: 1000 }]),
+    body: JSON.stringify([{ name: 'Auction Player', email: 'player.auction.logic@example.com', role: 'IGL', rankPoint: 90, basePrice: 1000 }]),
   });
 
   const loginRes = await fetch(`${API_BASE_URL}/api/events/${eventSlug}/auth/login`, {

@@ -14,6 +14,8 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   DEFAULT_AUCTION_WINDOW_SECONDS: z.string().default('30'),
   BID_INCREMENTS: z.string().default('100,500,1000'),
+  CLOUDINARY_URL: z.string().startsWith('cloudinary://').optional(),
+  CLOUDINARY_UPLOAD_FOLDER: z.string().default('esports'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

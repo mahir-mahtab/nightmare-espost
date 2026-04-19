@@ -55,6 +55,7 @@ export const eventService = {
         maxSlots: true,
         streamStartTime: true,
         bannerUrl: true,
+        sponsorImageUrl: true,
         status: true,
       },
       where: {
@@ -111,6 +112,7 @@ export const eventService = {
             id: true,
             eventId: true,
             name: true,
+            email: true,
             avatarUrl: true,
             createdAt: true,
           },
@@ -303,6 +305,7 @@ export const eventService = {
             id: true,
             eventId: true,
             name: true,
+            email: true,
             avatarUrl: true,
             createdAt: true,
           },
@@ -369,6 +372,7 @@ export const eventService = {
       streamStartTime: event.streamStartTime,
       auctionWindowSeconds: event.auctionWindowSeconds,
       bannerUrl: event.bannerUrl,
+      sponsorImageUrl: event.sponsorImageUrl,
       status: event.status,
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
@@ -431,6 +435,7 @@ export const eventService = {
         id: true,
         eventId: true,
         name: true,
+        email: true,
         avatarUrl: true,
         createdAt: true,
         _count: {
@@ -463,6 +468,7 @@ export const eventService = {
         id: true,
         eventId: true,
         name: true,
+        email: true,
         avatarUrl: true,
         createdAt: true,
       },
@@ -531,11 +537,73 @@ export const eventService = {
   },
 
   async deletePlayer(eventId: string, playerId: string) {
-    await this.getPlayerById(eventId, playerId);
+    const player = await this.getPlayerById(eventId, playerId);
 
-    return await prisma.player.delete({
-      where: { id: playerId },
+    const playerLots = await prisma.auctionLot.findMany({
+      where: {
+        eventId,
+        playerId,
+      },
+      select: {
+        id: true,
+        status: true,
+      },
     });
+
+    const hasActiveLot = playerLots.some((lot) => lot.status === AuctionStatus.ACTIVE);
+    if (hasActiveLot) {
+      throw new AppError('Cannot delete a player while their auction lot is active. Settle or reset the lot first.', 400, 'PLAYER_ACTIVE_AUCTION_LOT');
+    }
+
+    const soldTeamId = player.soldToTeamId;
+    const soldFinalPrice = player.finalPrice || 0;
+
+    await prisma.$transaction(async (tx) => {
+      if (player.status === PlayerStatus.SOLD && soldTeamId && soldFinalPrice > 0) {
+        await tx.team.update({
+          where: { id: soldTeamId },
+          data: {
+            coinsLeft: { increment: soldFinalPrice },
+          },
+        });
+      }
+
+      await tx.auctionLot.deleteMany({
+        where: {
+          eventId,
+          playerId,
+        },
+      });
+
+      await tx.player.delete({
+        where: { id: playerId },
+      });
+    });
+
+    if (playerLots.length > 0) {
+      try {
+        const rawState = await redis.get(runtimeRedisKey(eventId));
+        if (rawState) {
+          const runtimeState = JSON.parse(rawState);
+          for (const lot of playerLots) {
+            if (runtimeState?.liveBids && runtimeState.liveBids[lot.id]) {
+              delete runtimeState.liveBids[lot.id];
+            }
+          }
+
+          await redis.set(runtimeRedisKey(eventId), JSON.stringify(runtimeState));
+        }
+      } catch {
+        // Best-effort cleanup of runtime cache.
+      }
+    }
+
+    return {
+      id: player.id,
+      refunded: Boolean(player.status === PlayerStatus.SOLD && soldTeamId && soldFinalPrice > 0),
+      refundedAmount: player.status === PlayerStatus.SOLD && soldTeamId ? soldFinalPrice : 0,
+      deletedLotCount: playerLots.length,
+    };
   },
 
   // Get auction board

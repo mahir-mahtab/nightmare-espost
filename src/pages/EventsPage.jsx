@@ -83,43 +83,58 @@ const ContextualPageTitle = ({ activeTab, summary, auction, compact = false }) =
 const EventCard = ({ summary, auctionLots }) => {
   const soldCount = auctionLots.filter((lot) => lot.status === 'sold').length;
   const activeCount = auctionLots.filter((lot) => lot.status === 'active').length;
+  const sponsorImageUrl = summary.sponsorImageUrl || '/sponsor.png';
 
   return (
-    <div className="grid gap-6 md:gap-8 md:grid-cols-1 lg:grid-cols-5">
-      <CyberCard accent className="lg:col-span-3">
-        <div className="relative overflow-hidden p-6 md:p-8">
-          <div className="absolute -top-16 -left-10 h-52 w-52 rounded-full bg-primary/20 blur-3xl" />
-          <div className="absolute -right-8 bottom-0 h-40 w-40 rounded-full bg-primary/12 blur-2xl" />
-          <div className="relative">
-            <div className="inline-flex items-center gap-2 border border-primary/50 bg-primary/15 px-3 py-1.5 text-[10px] font-black tracking-[0.26em] text-primary uppercase">
-              <Calendar className="h-3.5 w-3.5" />
-              Live Tournament
-            </div>
-            <h3 className="mt-6 font-display text-3xl sm:text-4xl md:text-5xl leading-tight font-black uppercase">
-              {summary.title}
-              <span className="block text-primary">{summary.season}</span>
-            </h3>
-            <p className="mt-4 md:mt-5 max-w-2xl text-xs md:text-sm leading-relaxed text-white/65">
-              Participate in live selections, place bids in real time, and finalize player acquisitions with our dynamic event platform.
-            </p>
-            <div className="mt-6 md:mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
-              <div className="border border-white/10 bg-black/70 p-4">
-                <p className="text-[10px] font-bold tracking-[0.24em] text-white/40 uppercase">Match Type</p>
-                <p className="mt-2 text-base md:text-lg font-bold text-white">{summary.game} | {summary.mode}</p>
-              </div>
-              <div className="border border-white/10 bg-black/70 p-4">
-                <p className="text-[10px] font-bold tracking-[0.24em] text-white/40 uppercase">Stream Starts</p>
-                <p className="mt-2 text-base md:text-lg font-bold text-white">{summary.streamStart}</p>
-              </div>
-            </div>
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/40 xl:grid xl:grid-cols-12">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,0,0,0.1),transparent_50%)]" />
+
+      <div className="relative p-8 xl:col-span-8 xl:p-12">
+        <div className="inline-flex items-center gap-2 rounded border border-primary/50 bg-primary/15 px-3 py-1.5 text-[10px] font-black tracking-[0.26em] text-primary uppercase">
+          <Calendar className="h-3.5 w-3.5" />
+          Live Tournament
+        </div>
+
+        <h3 className="mt-8 font-display text-4xl sm:text-5xl md:text-6xl leading-tight font-black uppercase text-white">
+          {summary.title}
+          <span className="block mt-2 text-primary">{summary.season}</span>
+        </h3>
+
+        <p className="mt-6 max-w-2xl text-sm md:text-base leading-relaxed text-white/60">
+          Participate in live selections, place bids in real time, and finalize player acquisitions with our dynamic event platform.
+        </p>
+
+        <div className="mt-10 flex flex-wrap gap-8 border-y border-white/10 py-6 sm:gap-16">
+          <div>
+            <p className="text-[10px] font-black tracking-[0.24em] text-white/40 uppercase">Match Type</p>
+            <p className="mt-2 text-lg font-bold text-white">{summary.game} <span className="text-white/30">|</span> {summary.mode}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black tracking-[0.24em] text-white/40 uppercase">Stream Starts</p>
+            <p className="mt-2 text-lg font-bold text-white">{summary.streamStart}</p>
           </div>
         </div>
-      </CyberCard>
-      <div className="space-y-4 lg:col-span-2">
-        <MetricCard icon={Users} value={summary.registration} label="Registrations" />
-        <MetricCard icon={Target} value={summary.slots} label="Slots" />
-        <MetricCard icon={Gavel} value={activeCount} label="Active Lots" />
-        <MetricCard icon={Trophy} value={soldCount} label="Players Sold" />
+
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+          <p className="text-[10px] font-black tracking-[0.24em] text-white/40 uppercase">Presented By</p>
+          <img
+            src={sponsorImageUrl}
+            alt={`${summary.title} sponsor`}
+            className="h-10 w-auto max-w-[200px] object-contain sm:h-14"
+            onError={(event) => {
+              event.currentTarget.src = '/sponsor.png';
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="relative flex flex-col justify-center border-t border-white/10 bg-white/[0.02] p-8 xl:col-span-4 xl:border-t-0 xl:border-l">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1">
+          <MetricCard icon={Users} value={summary.registration} label="Registrations" />
+          <MetricCard icon={Target} value={summary.slots} label="Slots" />
+          <MetricCard icon={Gavel} value={activeCount} label="Active Lots" />
+          <MetricCard icon={Trophy} value={soldCount} label="Players Sold" />
+        </div>
       </div>
     </div>
   );

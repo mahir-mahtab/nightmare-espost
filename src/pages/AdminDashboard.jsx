@@ -68,6 +68,7 @@ const PERSON_NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const TEAM_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const PLAYER_ROLE_REGEX = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const isValidUrl = (value) => {
   if (!value) {
@@ -112,6 +113,9 @@ const validateEventForm = (formData) => {
   if (!isValidUrl(toOptional(formData.bannerUrl))) {
     return 'Banner URL must be a valid URL.';
   }
+  if (!isValidUrl(toOptional(formData.sponsorImageUrl))) {
+    return 'Sponsor image URL must be a valid URL.';
+  }
 
   return '';
 };
@@ -119,6 +123,10 @@ const validateEventForm = (formData) => {
 const validateOwnerForm = (formData, requirePassword) => {
   if (!PERSON_NAME_REGEX.test(toText(formData.name).trim())) {
     return 'Owner name format is invalid.';
+  }
+
+  if (!EMAIL_REGEX.test(toText(formData.email).trim().toLowerCase())) {
+    return 'Owner email format is invalid.';
   }
 
   const password = toText(formData.password);
@@ -154,6 +162,9 @@ const validatePlayerForm = (formData) => {
   const name = toText(formData.name).trim();
   if (name.length < 2 || name.length > 255) {
     return 'Player name must be 2-255 characters.';
+  }
+  if (!EMAIL_REGEX.test(toText(formData.email).trim().toLowerCase())) {
+    return 'Player email format is invalid.';
   }
   if (!PLAYER_ROLE_REGEX.test(toText(formData.role).trim())) {
     return 'Player role format is invalid.';
@@ -660,6 +671,7 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
     streamStartTime: toText(eventData.streamStartTime),
     auctionWindowSeconds: Number(eventData.auctionWindowSeconds || 30),
     bannerUrl: toText(eventData.bannerUrl),
+    sponsorImageUrl: toText(eventData.sponsorImageUrl),
     status: toText(eventData.status || 'UPCOMING'),
   });
   const [saving, setSaving] = useState(false);
@@ -677,6 +689,7 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
       streamStartTime: toText(eventData.streamStartTime),
       auctionWindowSeconds: Number(eventData.auctionWindowSeconds || 30),
       bannerUrl: toText(eventData.bannerUrl),
+      sponsorImageUrl: toText(eventData.sponsorImageUrl),
       status: toText(eventData.status || 'UPCOMING'),
     });
   }, [eventData]);
@@ -706,6 +719,7 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
         streamStartTime: toOptional(formData.streamStartTime),
         auctionWindowSeconds: Number(formData.auctionWindowSeconds),
         bannerUrl: toOptional(formData.bannerUrl),
+        sponsorImageUrl: toOptional(formData.sponsorImageUrl),
         status: formData.status,
       };
 
@@ -771,6 +785,8 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
         <Field label="Banner URL" value={formData.bannerUrl} onChange={(v) => setFormData({ ...formData, bannerUrl: v })} />
       </div>
 
+      <Field label="Sponsor Image URL" value={formData.sponsorImageUrl} onChange={(v) => setFormData({ ...formData, sponsorImageUrl: v })} />
+
       <button
         type="submit"
         disabled={saving}
@@ -785,8 +801,8 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
 const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState('');
-  const [createForm, setCreateForm] = useState({ name: '', password: '', avatarUrl: '' });
-  const [editForm, setEditForm] = useState({ name: '', password: '', avatarUrl: '' });
+  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '', avatarUrl: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', password: '', avatarUrl: '' });
 
   const handleCreate = async () => {
     onError('');
@@ -807,6 +823,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: createForm.name,
+          email: createForm.email.trim().toLowerCase(),
           password: createForm.password,
           avatarUrl: createForm.avatarUrl || undefined,
         }),
@@ -815,7 +832,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       if (!response.ok) {
         throw new Error(apiErrorMessage(payload, 'Unable to create owner'));
       }
-      setCreateForm({ name: '', password: '', avatarUrl: '' });
+      setCreateForm({ name: '', email: '', password: '', avatarUrl: '' });
       onChanged('Owner created successfully');
     } catch (err) {
       onError(err.message || 'Unable to create owner');
@@ -826,7 +843,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
 
   const startEdit = (owner) => {
     setEditingId(owner.id);
-    setEditForm({ name: owner.name || '', password: '', avatarUrl: owner.avatarUrl || '' });
+    setEditForm({ name: owner.name || '', email: owner.email || '', password: '', avatarUrl: owner.avatarUrl || '' });
   };
 
   const handleUpdate = async (ownerId) => {
@@ -847,6 +864,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: editForm.name,
+          email: editForm.email.trim().toLowerCase(),
           ...(editForm.password.trim() ? { password: editForm.password } : {}),
           avatarUrl: editForm.avatarUrl || undefined,
         }),
@@ -885,12 +903,19 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-4">
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-5">
         <input
           type="text"
           value={createForm.name}
           onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
           placeholder="Owner name"
+          className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary"
+        />
+        <input
+          type="email"
+          value={createForm.email}
+          onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+          placeholder="Owner email"
           className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary"
         />
         <input
@@ -909,7 +934,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
         />
         <button
           type="button"
-          disabled={creating || !createForm.name.trim() || !createForm.password.trim()}
+          disabled={creating || !createForm.name.trim() || !createForm.email.trim() || !createForm.password.trim()}
           onClick={handleCreate}
           className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50"
         >
@@ -918,7 +943,7 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
       </div>
 
       <DataTable
-        columns={['Owner ID', 'Name', 'Owner Password', 'Avatar URL', 'Actions']}
+        columns={['Owner ID', 'Name', 'Email', 'Owner Password', 'Avatar URL', 'Actions']}
         rows={owners.map((owner) => [
           owner.id,
           editingId === owner.id ? (
@@ -928,6 +953,14 @@ const OwnersTab = ({ owners, eventId, token, onError, onChanged }) => {
               className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary"
             />
           ) : owner.name,
+          editingId === owner.id ? (
+            <input
+              type="email"
+              value={editForm.email}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary"
+            />
+          ) : (owner.email || '-'),
           editingId === owner.id ? (
             <input
               type="password"
@@ -1149,6 +1182,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
   const [editingId, setEditingId] = useState('');
   const [createForm, setCreateForm] = useState({
     name: '',
+    email: '',
     role: '',
     rankPoint: 0,
     basePrice: 0,
@@ -1156,6 +1190,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
   });
   const [editForm, setEditForm] = useState({
     name: '',
+    email: '',
     role: '',
     rankPoint: 0,
     basePrice: 0,
@@ -1184,6 +1219,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: createForm.name,
+          email: createForm.email.trim().toLowerCase(),
           role: createForm.role,
           rankPoint: Number(createForm.rankPoint),
           basePrice: Number(createForm.basePrice),
@@ -1194,7 +1230,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       if (!response.ok) {
         throw new Error(apiErrorMessage(payload, 'Unable to create player'));
       }
-      setCreateForm({ name: '', role: '', rankPoint: 0, basePrice: 0, imageUrl: '' });
+      setCreateForm({ name: '', email: '', role: '', rankPoint: 0, basePrice: 0, imageUrl: '' });
       onChanged('Player created successfully');
     } catch (err) {
       onError(err.message || 'Unable to create player');
@@ -1207,6 +1243,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
     setEditingId(player.id);
     setEditForm({
       name: player.name || '',
+      email: player.email || '',
       role: player.role || '',
       rankPoint: Number(player.rankPoint || 0),
       basePrice: Number(player.basePrice || 0),
@@ -1235,6 +1272,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: editForm.name,
+          email: editForm.email.trim().toLowerCase(),
           role: editForm.role,
           rankPoint: Number(editForm.rankPoint),
           basePrice: Number(editForm.basePrice),
@@ -1277,21 +1315,23 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-5">
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-6">
         <input type="text" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Player name" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
+        <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="Player email" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="text" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })} placeholder="Role" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="number" value={createForm.rankPoint} onChange={(e) => setCreateForm({ ...createForm, rankPoint: Number(e.target.value || 0) })} placeholder="Rank" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="number" value={createForm.basePrice} onChange={(e) => setCreateForm({ ...createForm, basePrice: Number(e.target.value || 0) })} placeholder="Base price" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
-        <button type="button" disabled={creating || !createForm.name.trim() || !createForm.role.trim()} onClick={handleCreate} className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50">
+        <button type="button" disabled={creating || !createForm.name.trim() || !createForm.email.trim() || !createForm.role.trim()} onClick={handleCreate} className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50">
           {creating ? 'Creating...' : 'Add Player'}
         </button>
       </div>
 
       <DataTable
-        columns={['Player ID', 'Name', 'Role', 'Rank', 'Base Price', 'Status', 'Sold Team', 'Final Price', 'Actions']}
+        columns={['Player ID', 'Name', 'Email', 'Role', 'Rank', 'Base Price', 'Status', 'Sold Team', 'Final Price', 'Actions']}
         rows={players.map((player) => [
           player.id,
           editingId === player.id ? <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : player.name,
+          editingId === player.id ? <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : (player.email || '-'),
           editingId === player.id ? <input value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : player.role,
           editingId === player.id ? <input type="number" value={editForm.rankPoint} onChange={(e) => setEditForm({ ...editForm, rankPoint: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.rankPoint),
           editingId === player.id ? <input type="number" value={editForm.basePrice} onChange={(e) => setEditForm({ ...editForm, basePrice: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.basePrice),
@@ -2138,6 +2178,7 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
     streamStartTime: '',
     auctionWindowSeconds: 30,
     bannerUrl: '',
+    sponsorImageUrl: '',
   });
 
   const handleCreate = async (e) => {
@@ -2165,6 +2206,7 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
         streamStartTime: toOptional(formData.streamStartTime),
         auctionWindowSeconds: Number(formData.auctionWindowSeconds),
         bannerUrl: toOptional(formData.bannerUrl),
+        sponsorImageUrl: toOptional(formData.sponsorImageUrl),
       };
 
       const response = await fetch(`${API_URL}/events`, {
@@ -2213,7 +2255,10 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
               <NumberField label="Auction Window" value={formData.auctionWindowSeconds} onChange={(v) => setFormData({ ...formData, auctionWindowSeconds: v })} />
               <Field label="Stream Start" value={formData.streamStartTime} onChange={(v) => setFormData({ ...formData, streamStartTime: v })} />
             </div>
-            <Field label="Banner URL" value={formData.bannerUrl} onChange={(v) => setFormData({ ...formData, bannerUrl: v })} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Banner URL" value={formData.bannerUrl} onChange={(v) => setFormData({ ...formData, bannerUrl: v })} />
+              <Field label="Sponsor Image URL" value={formData.sponsorImageUrl} onChange={(v) => setFormData({ ...formData, sponsorImageUrl: v })} />
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button
