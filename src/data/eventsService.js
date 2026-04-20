@@ -284,11 +284,13 @@ export const eventsService = {
     });
   },
 
-  async startAuction({ eventId, adminToken, autoProgress = true }) {
+  async startAuction({ eventId, adminToken, autoProgress }) {
+    const body = typeof autoProgress === 'boolean' ? { autoProgress } : {};
+
     return await request(`/auction/${eventId}/start`, {
       method: 'POST',
       token: adminToken,
-      body: { autoProgress },
+      body,
     });
   },
 

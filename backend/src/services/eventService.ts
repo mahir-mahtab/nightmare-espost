@@ -318,35 +318,42 @@ export const eventService = {
   async createPlayers(eventId: string, players: any[]) {
     await this.getEventById(eventId);
 
-    // Create players and corresponding auction lots
-    const createdPlayers = await prisma.$transaction(
-      players.map((player) =>
-        prisma.player.create({
+    return await prisma.$transaction(async (tx) => {
+      const maxLotOrderResult = await tx.auctionLot.aggregate({
+        where: { eventId },
+        _max: { lotOrder: true },
+      });
+
+      const nextLotOrderStart = (maxLotOrderResult._max.lotOrder || 0) + 1;
+      const createdPlayers: any[] = [];
+      const auctionLots: any[] = [];
+
+      for (const [index, player] of players.entries()) {
+        const createdPlayer = await tx.player.create({
           data: {
             ...player,
             eventId,
             status: PlayerStatus.ACTIVE,
           },
-        })
-      )
-    );
+        });
 
-    // Create auction lots for all players
-    const auctionLots = await prisma.$transaction(
-      createdPlayers.map((player: any, index: number) =>
-        prisma.auctionLot.create({
+        createdPlayers.push(createdPlayer);
+
+        const createdLot = await tx.auctionLot.create({
           data: {
             eventId,
-            playerId: player.id,
+            playerId: createdPlayer.id,
             status: AuctionStatus.PENDING,
-            lotOrder: index + 1,
+            lotOrder: nextLotOrderStart + index,
             endsAt: null,
           },
-        })
-      )
-    );
+        });
 
-    return { players: createdPlayers, auctionLots };
+        auctionLots.push(createdLot);
+      }
+
+      return { players: createdPlayers, auctionLots };
+    });
   },
 
   // Get event summary

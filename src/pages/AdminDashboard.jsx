@@ -2137,7 +2137,7 @@ const LotsTab = ({ lots, runtime, players, owners, eventId, token, onError, onCh
             <button
               type="button"
               disabled={auctionBusy || isAuctionRunning || lotSummary.pending === 0}
-              onClick={() => callAuctionControl('/start', { autoProgress }, 'Auction started with first pending lot')}
+              onClick={() => callAuctionControl('/start', {}, 'Auction started with first pending lot')}
               className="h-10 rounded border border-sky-300/70 bg-sky-300/20 px-3 text-xs font-bold uppercase text-sky-100 disabled:opacity-50"
             >
               Start Auction

@@ -149,7 +149,7 @@ export const auctionController = {
     try {
       const { eventId } = eventIdParamSchema.parse(req.params);
       const body = auctionStartSchema.parse(req.body || {});
-      const runtime = await auctionService.startAuction(eventId, Boolean(body.autoProgress));
+      const runtime = await auctionService.startAuction(eventId, body.autoProgress);
 
       socketServer.emitAuctionStarted(eventId, {
         eventId,

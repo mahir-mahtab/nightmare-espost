@@ -467,13 +467,18 @@ export const auctionService = {
       }
 
       if (status === 'ACTIVE') {
+        // Settle any existing ACTIVE lots before activating this one
+        const existingActiveLots = await prisma.auctionLot.findMany({
+          where: { eventId: event.id, status: AuctionStatus.ACTIVE, id: { not: lot.id } },
+        });
+
+        for (const activeLot of existingActiveLots) {
+          await this.settleLot(event, activeLot.id, runtime);
+        }
+
         const endsAtMs = Date.now() + (event.auctionWindowSeconds * 1000);
 
         await prisma.$transaction([
-          prisma.auctionLot.updateMany({
-            where: { eventId: event.id, status: AuctionStatus.ACTIVE, id: { not: lot.id } },
-            data: { status: AuctionStatus.PENDING, endsAt: null },
-          }),
           prisma.auctionLot.update({
             where: { id: lot.id },
             data: {
@@ -576,18 +581,18 @@ export const auctionService = {
     });
   },
 
-  async startAuction(eventId: string, autoProgress = false) {
+  async startAuction(eventId: string, autoProgress?: boolean) {
     return withLock(eventId, async () => {
       const event = await eventService.getEventById(eventId);
 
       const firstPendingLot = await prisma.auctionLot.findFirst({
         where: { eventId: event.id, status: AuctionStatus.PENDING },
-        orderBy: { lotOrder: 'asc' },
+        orderBy: [{ lotOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       });
 
       const activeLot = await prisma.auctionLot.findFirst({
         where: { eventId: event.id, status: AuctionStatus.ACTIVE },
-        orderBy: { lotOrder: 'asc' },
+        orderBy: [{ lotOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       });
 
       const lotToActivate = activeLot || firstPendingLot;
@@ -612,7 +617,9 @@ export const auctionService = {
         ? new Date(lotToActivate.endsAt).getTime()
         : endsAtMs;
       runtime.isRunning = true;
-      runtime.autoProgress = autoProgress;
+      if (typeof autoProgress === 'boolean') {
+        runtime.autoProgress = autoProgress;
+      }
       runtime.lotDuration = event.auctionWindowSeconds;
       delete runtime.liveBids[lotToActivate.id];
 
@@ -662,14 +669,29 @@ export const auctionService = {
       await this.settleLot(event, current.id, runtime);
     }
 
-    const next = await prisma.auctionLot.findFirst({
+    let next = await prisma.auctionLot.findFirst({
       where: {
         eventId: event.id,
-        lotOrder: { gt: current.lotOrder },
         status: { in: [AuctionStatus.PENDING, AuctionStatus.ACTIVE] },
+        OR: [
+          { lotOrder: { gt: current.lotOrder } },
+          { lotOrder: current.lotOrder, createdAt: { gt: current.createdAt } },
+          { lotOrder: current.lotOrder, createdAt: current.createdAt, id: { gt: current.id } },
+        ],
       },
-      orderBy: { lotOrder: 'asc' },
+      orderBy: [{ lotOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
+
+    if (!next) {
+      next = await prisma.auctionLot.findFirst({
+        where: {
+          eventId: event.id,
+          id: { not: current.id },
+          status: { in: [AuctionStatus.PENDING, AuctionStatus.ACTIVE] },
+        },
+        orderBy: [{ lotOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      });
+    }
 
     if (!next) {
       runtime.isRunning = false;
@@ -732,13 +754,34 @@ export const auctionService = {
       const event = await eventService.getEventById(eventId);
       const runtime = await this.getRuntimeState(event.id, event.auctionWindowSeconds);
 
+      // If there's an active lot in runtime, settle it first to prevent bid loss
       if (runtime.activeLotId) {
-        throw new AppError('Settle current lot before activating next lot.', 400, 'ACTIVE_LOT_EXISTS');
+        const currentLot = await prisma.auctionLot.findFirst({
+          where: { id: runtime.activeLotId, eventId: event.id },
+        });
+
+        if (currentLot && currentLot.status === AuctionStatus.ACTIVE) {
+          await this.settleLot(event, currentLot.id, runtime);
+        }
+
+        // Clear runtime state after settling
+        runtime.activeLotId = null;
+        runtime.activeLotEndsAt = null;
+      }
+
+      // Also check database for any ACTIVE lots (in case runtime is out of sync)
+      const anyActiveLot = await prisma.auctionLot.findFirst({
+        where: { eventId: event.id, status: AuctionStatus.ACTIVE },
+      });
+
+      if (anyActiveLot) {
+        // Settle any active lot found in database
+        await this.settleLot(event, anyActiveLot.id, runtime);
       }
 
       const nextPendingLot = await prisma.auctionLot.findFirst({
         where: { eventId: event.id, status: AuctionStatus.PENDING },
-        orderBy: { lotOrder: 'asc' },
+        orderBy: [{ lotOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       });
 
       if (!nextPendingLot) {
@@ -756,11 +799,9 @@ export const auctionService = {
       }
 
       const nextEndsAtMs = Date.now() + (event.auctionWindowSeconds * 1000);
+      
+      // No need for updateMany - we already settled any ACTIVE lots above
       await prisma.$transaction([
-        prisma.auctionLot.updateMany({
-          where: { eventId: event.id, status: AuctionStatus.ACTIVE },
-          data: { status: AuctionStatus.PENDING, endsAt: null },
-        }),
         prisma.auctionLot.update({
           where: { id: nextPendingLot.id },
           data: {
@@ -894,17 +935,18 @@ export const auctionService = {
       }
 
       if (status === 'ACTIVE') {
+        // Settle any existing ACTIVE lots before activating this one
+        const existingActiveLots = await prisma.auctionLot.findMany({
+          where: { eventId: event.id, status: AuctionStatus.ACTIVE, id: { not: lot.id } },
+        });
+
+        for (const activeLot of existingActiveLots) {
+          await this.settleLot(event, activeLot.id, runtime);
+        }
+
         const endsAtMs = Date.now() + (event.auctionWindowSeconds * 1000);
 
         await prisma.$transaction([
-          prisma.auctionLot.updateMany({
-            where: {
-              eventId: event.id,
-              status: AuctionStatus.ACTIVE,
-              id: { not: lot.id },
-            },
-            data: { status: AuctionStatus.PENDING, endsAt: null },
-          }),
           prisma.auctionLot.update({
             where: { id: lot.id },
             data: { status: AuctionStatus.ACTIVE, endsAt: new Date(endsAtMs) },

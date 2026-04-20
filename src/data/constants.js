@@ -100,8 +100,8 @@ export const CONTENT_CREATORS = [
 ];
 
 export const SOCIAL_LINKS = [
-  { name: 'Facebook', icon: Facebook, url: '#', color: 'hover:border-blue-500 hover:text-blue-500 hover:shadow-blue-500/20' },
+  { name: 'Facebook', icon: Facebook, url: 'https://www.facebook.com/share/1AUaWNekdw/', color: 'hover:border-blue-500 hover:text-blue-500 hover:shadow-blue-500/20' },
   { name: 'YouTube', icon: Youtube, url: '#', color: 'hover:border-red-500 hover:text-red-500 hover:shadow-red-500/20' },
-  { name: 'Discord', icon: MessageCircle, url: '#', color: 'hover:border-indigo-500 hover:text-indigo-500 hover:shadow-indigo-500/20' },
-  { name: 'Website', icon: Globe, url: '#', color: 'hover:border-primary hover:text-primary hover:shadow-primary/20' },
+  { name: 'Discord', icon: MessageCircle, url: 'https://discord.gg/RyqtEcSFn', color: 'hover:border-indigo-500 hover:text-indigo-500 hover:shadow-indigo-500/20' },
+  { name: 'Website', icon: Globe, url: 'https://nmesportsorg.com', color: 'hover:border-primary hover:text-primary hover:shadow-primary/20' },
 ];
