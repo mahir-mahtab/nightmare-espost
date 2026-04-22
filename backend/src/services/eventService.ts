@@ -59,7 +59,7 @@ export const eventService = {
         status: true,
       },
       where: {
-        status: { in: [EventStatus.UPCOMING, EventStatus.LIVE] },
+        status: { in: [EventStatus.UPCOMING, EventStatus.LIVE, EventStatus.COMPLETED] },
       },
       orderBy: { createdAt: 'desc' },
     });

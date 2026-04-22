@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 const personNameRegex = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const teamNameRegex = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
-const playerRoleRegex = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
 const eventIdOrSlugRegex = /^[A-Za-z0-9-]{3,120}$/;
 const cloudinaryFolderRegex = /^[A-Za-z0-9/_-]{1,120}$/;
+const playerRoleValues = ['IGL', 'Support', 'Assaulter', 'Sniper'] as const;
 const emailSchema = z.string().trim().email().max(255).transform((value) => value.toLowerCase());
 
 // Event validation schemas
@@ -15,12 +15,15 @@ export const createEventSchema = z.object({
   game: z.string().min(2).max(100),
   mode: z.string().optional(),
   password: z.string().min(4).max(50),
-  registrationCount: z.number().int().min(0).default(0),
-  maxSlots: z.number().int().min(0).default(0),
+  registrationCount: z.coerce.number().int().min(0).default(0),
+  maxSlots: z.coerce.number().int().min(0).default(0),
   streamStartTime: z.string().optional(),
-  auctionWindowSeconds: z.number().int().min(10).max(300).default(30),
+  auctionWindowSeconds: z.coerce.number().int().min(10).max(300).default(30),
   bannerUrl: z.string().url().optional(),
   sponsorImageUrl: z.string().url().optional(),
+  playerBasePrice: z.coerce.number().int().min(0).max(100000).default(1000).optional(),
+  ownerCoins: z.coerce.number().int().min(0).max(100000).default(10000).optional(),
+  status: z.enum(['UPCOMING', 'LIVE', 'COMPLETED']).optional(),
 });
 
 export const updateEventSchema = createEventSchema.partial();
@@ -29,7 +32,7 @@ export const updateEventSchema = createEventSchema.partial();
 export const createTeamSchema = z.object({
   name: z.string().min(2).max(255),
   ownerId: z.string().uuid(),
-  coinsLeft: z.number().int().min(0).default(0),
+  coinsLeft: z.coerce.number().int().min(0).default(0),
 });
 
 export const updateTeamSchema = createTeamSchema.partial();
@@ -53,16 +56,16 @@ export const updateOwnerSchema = z.object({
 export const createPlayerSchema = z.object({
   name: z.string().min(2).max(255),
   email: emailSchema,
-  role: z.string().min(1).max(50),
-  rankPoint: z.number().int().min(0).max(100).default(0),
-  basePrice: z.number().int().min(0).default(0),
+  role: z.enum(playerRoleValues),
+  rankPoint: z.coerce.number().int().min(0).max(100).default(0),
+  basePrice: z.coerce.number().int().min(0).default(0),
   imageUrl: z.string().url().optional(),
 });
 
 export const updatePlayerSchema = createPlayerSchema.partial().extend({
   status: z.enum(['ACTIVE', 'SOLD', 'UNSOLD']).optional(),
   soldToTeamId: z.string().uuid().nullable().optional(),
-  finalPrice: z.number().int().min(0).nullable().optional(),
+  finalPrice: z.coerce.number().int().min(0).nullable().optional(),
 });
 
 export const createAuctionLotSchema = z.object({
@@ -75,7 +78,7 @@ export const createAuctionLotSchema = z.object({
 
     return !Number.isNaN(Date.parse(value));
   }, 'Invalid endsAt datetime'),
-  lotOrder: z.number().int().min(1),
+  lotOrder: z.coerce.number().int().min(1),
 });
 
 export const updateAuctionLotSchema = createAuctionLotSchema.partial();
@@ -104,29 +107,27 @@ export const ownerSignupSchema = z.object({
   ownerPassword: z.string().trim().min(6).max(100),
   avatarUrl: z.string().trim().url().optional(),
   teamName: z.string().trim().min(2).max(100).regex(teamNameRegex, 'Team name format is invalid'),
-  coinsLeft: z.number().int().min(0).max(100000).default(0),
 });
 
 export const playerSignupSchema = z.object({
   eventPassword: z.string().min(4).max(50),
   playerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Player name format is invalid'),
   playerEmail: emailSchema,
-  playerRole: z.string().trim().min(2).max(40).regex(playerRoleRegex, 'Player role format is invalid'),
-  rankPoint: z.number().int().min(0).max(100).default(0),
-  basePrice: z.number().int().min(0).max(100000).default(0),
+  playerRole: z.enum(playerRoleValues),
+  rankPoint: z.coerce.number().int().min(0).max(100).default(0),
   imageUrl: z.string().trim().url().optional(),
 });
 
 // Auction schemas
 export const placeBidSchema = z.object({
   lotId: z.string().uuid(),
-  amount: z.number().int().min(1),
+  amount: z.coerce.number().int().min(1),
   ownerId: z.string().uuid().optional(),
 });
 
 export const finalizePurchaseSchema = z.object({
   ownerId: z.string().uuid(),
-  amount: z.number().int().min(1),
+  amount: z.coerce.number().int().min(1),
 });
 
 export const resetLotSchema = z.object({
@@ -147,7 +148,7 @@ export const manualLotOverrideSchema = z.object({
 });
 
 export const extendTimerSchema = z.object({
-  seconds: z.number().int().min(1).max(300),
+  seconds: z.coerce.number().int().min(1).max(300),
 });
 
 // Route params / query validation

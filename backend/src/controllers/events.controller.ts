@@ -182,7 +182,7 @@ export const eventsController = {
       const [team] = await eventService.createTeams(event.id, [{
         name: payload.teamName,
         ownerId: owner.id,
-        coinsLeft: payload.coinsLeft,
+        coinsLeft: event.ownerCoins,
       }]);
 
       res.status(201).json({
@@ -213,7 +213,7 @@ export const eventsController = {
         email: payload.playerEmail,
         role: payload.playerRole,
         rankPoint: payload.rankPoint,
-        basePrice: payload.basePrice,
+        basePrice: event.playerBasePrice,
         imageUrl: payload.imageUrl,
       }]);
 

@@ -9,6 +9,7 @@
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const DEFAULT_OWNER_COINS = 25000;
 const DEFAULT_PLAYER_BASE_PRICE = 1000;
 
 const toOwnerName = (index) => {
@@ -18,7 +19,7 @@ const toOwnerName = (index) => {
 const toOwnerEmail = (index, suffix) => `owner${String(index + 1).padStart(2, '0')}.${suffix}@example.com`;
 const toTeamName = (index) => `Franchise ${String(index + 1).padStart(2, '0')}`;
 
-const ROLES = ['IGL', 'Assaulter', 'Support', 'Sniper', 'Rusher'];
+const ROLES = ['IGL', 'Assaulter', 'Support', 'Sniper'];
 
 const buildPlayers = (count = 28) => {
   const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry', 'Iris', 'Jack', 'Karen', 'Liam', 'Mila', 'Noah', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Sam', 'Tessa', 'Uma', 'Victor', 'Wendy', 'Xavier', 'Yara', 'Zoe'];
@@ -27,7 +28,6 @@ const buildPlayers = (count = 28) => {
     name: `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`,
     role: ROLES[index % ROLES.length],
     rankPoint: 60 + (index % 41),
-    basePrice: DEFAULT_PLAYER_BASE_PRICE,
   }));
 };
 
@@ -81,6 +81,8 @@ async function run() {
       registrationCount: 14,
       maxSlots: 14,
       auctionWindowSeconds: 20,
+      ownerCoins: DEFAULT_OWNER_COINS,
+      playerBasePrice: DEFAULT_PLAYER_BASE_PRICE,
     },
   });
 
@@ -94,7 +96,6 @@ async function run() {
         ownerEmail: toOwnerEmail(index, suffix),
         ownerPassword: `owner${String(index + 1).padStart(2, '0')}123`,
         teamName: toTeamName(index),
-        coinsLeft: 25000,
       },
     });
   }
@@ -111,7 +112,6 @@ async function run() {
         playerEmail: toPlayerEmail(index, suffix),
         playerRole: player.role,
         rankPoint: player.rankPoint,
-        basePrice: player.basePrice,
       },
     });
   }
@@ -120,7 +120,8 @@ async function run() {
   console.log(`Event ID: ${event.id}`);
   console.log(`Event Slug: ${event.slug}`);
   console.log(`Event Password: ${eventPassword}`);
-  console.log(`Default Player Base Price: ${DEFAULT_PLAYER_BASE_PRICE}`);
+  console.log(`Owner Coins per team: ${DEFAULT_OWNER_COINS}`);
+  console.log(`Player Base Price: ${DEFAULT_PLAYER_BASE_PRICE}`);
   console.log('Owners created: 14');
   console.log('Players created: 30');
   console.log('Teams created: 14');

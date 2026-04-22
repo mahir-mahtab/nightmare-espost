@@ -66,7 +66,7 @@ const Footer = () => (
           Built for competitive dominance
         </p>
         <p className="text-[10px] text-white/30">
-          © 2025 Nightmare Esports. All rights reserved.
+          © 2026 Nightmare Esports. All rights reserved.
         </p>
       </div>
     </div>

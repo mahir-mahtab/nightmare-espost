@@ -54,7 +54,7 @@
   "notes": {
     "workflow": "1. Upload owners first (with password), 2. Get owner UUIDs from Prisma Studio or API response, 3. Upload teams with correct ownerId, 4. Upload players",
     "imageUrls": "Use Unsplash or any public image URL. Format: ?w=WIDTH&h=HEIGHT&fit=crop",
-    "roles": "Common roles: IGL, Assaulter, Support, Sniper, ES-P, NES-P",
+    "roles": "Allowed roles: IGL, Assaulter, Support, Sniper",
     "basePrice": "Starting auction price in coins (e.g., 500, 1000, 1500)",
     "coinsLeft": "Total coins each team has for bidding (e.g., 5000)"
   }

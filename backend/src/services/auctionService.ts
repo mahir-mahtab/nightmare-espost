@@ -699,7 +699,6 @@ export const auctionService = {
       runtime.activeLotId = null;
       runtime.activeLotEndsAt = null;
       await this.saveRuntimeState(event.id, runtime);
-      await prisma.event.update({ where: { id: event.id }, data: { status: 'COMPLETED' } });
       return { done: true, runtime };
     }
 
@@ -789,7 +788,6 @@ export const auctionService = {
         runtime.autoProgress = false;
         runtime.activeLotEndsAt = null;
         await this.saveRuntimeState(event.id, runtime);
-        await prisma.event.update({ where: { id: event.id }, data: { status: 'COMPLETED' } });
 
         return {
           done: true,

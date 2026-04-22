@@ -135,11 +135,11 @@ async function testBulkUploadPlayers() {
   console.log('⚡ Test 3: Bulk Upload Players');
   
   const playersData = [
-    { name: 'Player One', email: 'player.one.bulk@example.com', role: 'Duelist', rankPoint: 85, basePrice: 500, imageUrl: 'https://i.pravatar.cc/150?u=p1' },
-    { name: 'Player Two', email: 'player.two.bulk@example.com', role: 'Controller', rankPoint: 90, basePrice: 800, imageUrl: 'https://i.pravatar.cc/150?u=p2' },
-    { name: 'Player Three', email: 'player.three.bulk@example.com', role: 'Sentinel', rankPoint: 75, basePrice: 300, imageUrl: 'https://i.pravatar.cc/150?u=p3' },
-    { name: 'Player Four', email: 'player.four.bulk@example.com', role: 'Initiator', rankPoint: 80, basePrice: 600, imageUrl: 'https://i.pravatar.cc/150?u=p4' },
-    { name: 'Player Five', email: 'player.five.bulk@example.com', role: 'Duelist', rankPoint: 95, basePrice: 1000, imageUrl: 'https://i.pravatar.cc/150?u=p5' },
+    { name: 'Player One', email: 'player.one.bulk@example.com', role: 'IGL', rankPoint: 85, basePrice: 500, imageUrl: 'https://i.pravatar.cc/150?u=p1' },
+    { name: 'Player Two', email: 'player.two.bulk@example.com', role: 'Support', rankPoint: 90, basePrice: 800, imageUrl: 'https://i.pravatar.cc/150?u=p2' },
+    { name: 'Player Three', email: 'player.three.bulk@example.com', role: 'Assaulter', rankPoint: 75, basePrice: 300, imageUrl: 'https://i.pravatar.cc/150?u=p3' },
+    { name: 'Player Four', email: 'player.four.bulk@example.com', role: 'Sniper', rankPoint: 80, basePrice: 600, imageUrl: 'https://i.pravatar.cc/150?u=p4' },
+    { name: 'Player Five', email: 'player.five.bulk@example.com', role: 'IGL', rankPoint: 95, basePrice: 1000, imageUrl: 'https://i.pravatar.cc/150?u=p5' },
   ];
   
   try {
@@ -174,7 +174,7 @@ async function testGetEventData() {
   console.log('📊 Test 4: Verify Event Data');
   
   try {
-    const response = await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/full`, {
       headers: {
         'Authorization': `Bearer ${adminToken}`,
       },

@@ -1,4 +1,4 @@
-name,logo,remainingPurse
-Team Alpha,https://example.com/logo1.png,50000
-Team Beta,https://example.com/logo2.png,50000
-Team Gamma,https://example.com/logo3.png,50000
+name,ownerId,coinsLeft
+Team Alpha,REPLACE_WITH_OWNER_UUID_1,50000
+Team Beta,REPLACE_WITH_OWNER_UUID_2,50000
+Team Gamma,REPLACE_WITH_OWNER_UUID_3,50000

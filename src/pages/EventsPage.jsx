@@ -172,7 +172,7 @@ const TeamGrid = ({ teams }) => (
             <div className="h-full w-full bg-[radial-gradient(circle_at_14%_14%,rgba(255,90,0,0.38),transparent_42%),radial-gradient(circle_at_82%_84%,rgba(250,204,21,0.2),transparent_45%)]" />
           </div>
           <div className="relative flex items-start gap-3">
-            <img src={team.ownerAvatar} alt={team.ownerName} className="h-12 w-12 shrink-0 rounded-full border-2 border-white/45 object-cover shadow-[0_8px_14px_rgba(0,0,0,0.35)] md:h-13 md:w-13" />
+            <img src={team.ownerAvatar} alt={team.ownerName} className="h-12 w-16 shrink-0 rounded-md border-2 border-white/45 object-cover shadow-[0_8px_14px_rgba(0,0,0,0.35)] md:h-13 md:w-18" />
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold tracking-[0.18em] text-white/60 uppercase">Owner</p>
               <h3 className="line-clamp-2 font-display text-sm font-black text-white md:text-base">{team.ownerName}</h3>
@@ -196,7 +196,7 @@ const TeamGrid = ({ teams }) => (
             <p className="text-center text-[9px] font-bold tracking-[0.18em] text-white/50 uppercase">Roster</p>
             <div className="flex flex-wrap items-center justify-center gap-2">
               {team.roster.map((avatar) => (
-                <img key={avatar} src={avatar} alt="Team player" className="h-9 w-9 rounded-full border-2 border-white/30 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.25)] transition-transform hover:scale-110 md:h-10 md:w-10" />
+                <img key={avatar} src={avatar} alt="Team player" className="h-8 w-12 rounded-md border-2 border-white/30 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.25)] transition-transform hover:scale-110 md:h-9 md:w-14" />
               ))}
             </div>
           </div>
@@ -286,7 +286,7 @@ const AuctionOwnerTile = ({ owner, isLeader }) => (
       isLeader ? 'border-primary/70 bg-primary/12' : 'border-white/15 bg-black/45'
     }`}
   >
-    <img src={owner.avatar} alt={owner.name} className="h-10 w-10 rounded-lg border border-white/20 object-cover" />
+    <img src={owner.avatar} alt={owner.name} className="h-10 w-14 rounded-md border border-white/20 object-cover" />
     <div className="min-w-0 flex-1">
       <p className="truncate text-[11px] font-bold tracking-[0.08em] text-white uppercase">{owner.name}</p>
       <p className={`text-[10px] ${isLeader ? 'text-primary' : 'text-white/45'}`}>{isLeader ? 'Top bid' : 'Watching'}</p>
@@ -336,15 +336,14 @@ const AuctionHub = ({
         <CyberCard className="auction-main-panel min-h-0 overflow-hidden p-3 sm:p-4 lg:p-5" accent hover={false}>
           <div className="flex h-full min-h-0 flex-col">
             <div className="grid gap-3 md:grid-cols-[180px_1fr]">
-              <div className="relative overflow-hidden rounded-xl border border-white/15 bg-white">
+              <div className="relative aspect-4/3 overflow-hidden rounded-xl border border-white/15 bg-black/70">
                 {selectedPlayer ? (
-                  <img src={selectedPlayer.image} alt={selectedPlayer.name} className="h-full max-h-52 w-full object-cover object-top" />
+                  <img src={selectedPlayer.image} alt={selectedPlayer.name} className="h-full w-full object-contain" />
                 ) : (
                   <div className="flex h-52 items-center justify-center bg-black/70 text-white/45">
                     <Gavel className="h-10 w-10" />
                   </div>
                 )}
-                {selectedAuction?.status && selectedAuction.status !== 'active' && <span className="sold-stamp">{selectedAuction.status}</span>}
               </div>
 
               <div className="space-y-3">

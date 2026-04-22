@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
-import { GlitchText, CyberCard } from '../ui/index.jsx';
-import { TOURNAMENT_DATA } from '../../data/constants.js';
+import { GlitchText } from '../ui/index.jsx';
+import LiveEventShowcase from './LiveEventShowcase.jsx';
 
 const HeroSection = () => (
   <section className="relative overflow-hidden px-6 pb-24 pt-16 md:pt-20">
@@ -52,40 +52,7 @@ const HeroSection = () => (
         </div>
       </Motion.div>
 
-      <Motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="relative"
-      >
-        <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-transparent to-primary/10 blur-3xl" />
-        <CyberCard className="relative" hover={false}>
-          <div className="p-2">
-            <img
-              src="https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2084&auto=format&fit=crop"
-              alt="Nightmare Esports showcase"
-              className="h-[400px] w-full object-cover brightness-75 grayscale-[20%] lg:h-[450px]"
-            />
-          </div>
-          {/* Overlay Stats */}
-          <div className="absolute bottom-6 left-6 right-6">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="border border-white/10 bg-black/80 p-3 backdrop-blur">
-                <div className="font-display text-xl font-black text-primary">{TOURNAMENT_DATA.slots}</div>
-                <div className="text-[9px] font-bold tracking-[0.15em] text-white/50 uppercase">Slots</div>
-              </div>
-              <div className="border border-white/10 bg-black/80 p-3 backdrop-blur">
-                <div className="font-display text-xl font-black text-primary">{TOURNAMENT_DATA.registrations}</div>
-                <div className="text-[9px] font-bold tracking-[0.15em] text-white/50 uppercase">Teams</div>
-              </div>
-              <div className="border border-white/10 bg-black/80 p-3 backdrop-blur">
-                <div className="font-display text-xl font-black text-primary">S3</div>
-                <div className="text-[9px] font-bold tracking-[0.15em] text-white/50 uppercase">Season</div>
-              </div>
-            </div>
-          </div>
-        </CyberCard>
-      </Motion.div>
+      <LiveEventShowcase />
     </div>
   </section>
 );

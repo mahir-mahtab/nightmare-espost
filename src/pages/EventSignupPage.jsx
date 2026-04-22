@@ -11,8 +11,8 @@ const OWNER_PASSWORD_MIN = 6;
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 const NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const TEAM_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
-const ROLE_REGEX = /^[A-Za-z][A-Za-z0-9\s/-]{1,39}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_PLAYER_ROLES = ['IGL', 'Support', 'Assaulter', 'Sniper'];
 
 const getSignupUploadFolder = (eventId, role) => `${toTrimmed(eventId)}/signup/${role}`;
 
@@ -39,7 +39,6 @@ const validateOwnerForm = (values) => {
   const ownerEmail = toTrimmed(values.ownerEmail).toLowerCase();
   const ownerPassword = toTrimmed(values.ownerPassword);
   const avatarUrl = toTrimmed(values.avatarUrl);
-  const coinsLeft = Number(values.coinsLeft);
 
   if (eventPassword.length < EVENT_PASSWORD_MIN) {
     return 'Event password must be at least 4 characters.';
@@ -55,9 +54,6 @@ const validateOwnerForm = (values) => {
   }
   if (!TEAM_REGEX.test(teamName)) {
     return 'Team name format is invalid.';
-  }
-  if (!Number.isInteger(coinsLeft) || coinsLeft < 0 || coinsLeft > 100000) {
-    return 'Coins must be a whole number between 0 and 100000.';
   }
   if (avatarUrl) {
     try {
@@ -76,7 +72,6 @@ const validatePlayerForm = (values) => {
   const playerEmail = toTrimmed(values.playerEmail).toLowerCase();
   const playerRole = toTrimmed(values.playerRole);
   const rankPoint = Number(values.rankPoint);
-  const basePrice = Number(values.basePrice);
   const imageUrl = toTrimmed(values.imageUrl);
 
   if (eventPassword.length < EVENT_PASSWORD_MIN) {
@@ -88,14 +83,11 @@ const validatePlayerForm = (values) => {
   if (!EMAIL_REGEX.test(playerEmail)) {
     return 'Player email format is invalid.';
   }
-  if (!ROLE_REGEX.test(playerRole)) {
-    return 'Player role format is invalid.';
+  if (!VALID_PLAYER_ROLES.includes(playerRole)) {
+    return 'Player role must be selected from available options.';
   }
   if (!Number.isInteger(rankPoint) || rankPoint < 0 || rankPoint > 100) {
     return 'Rank point must be a whole number between 0 and 100.';
-  }
-  if (!Number.isInteger(basePrice) || basePrice < 0 || basePrice > 100000) {
-    return 'Base price must be a whole number between 0 and 100000.';
   }
   if (imageUrl) {
     try {
@@ -127,7 +119,6 @@ const EventSignupPage = () => {
     ownerPassword: '',
     avatarUrl: '',
     teamName: '',
-    coinsLeft: 0,
   });
 
   const [playerForm, setPlayerForm] = useState({
@@ -136,7 +127,6 @@ const EventSignupPage = () => {
     playerEmail: '',
     playerRole: '',
     rankPoint: 0,
-    basePrice: 0,
     imageUrl: '',
   });
 
@@ -266,7 +256,6 @@ const EventSignupPage = () => {
         ownerPassword: toTrimmed(ownerForm.ownerPassword),
         avatarUrl: toTrimmed(ownerForm.avatarUrl) || undefined,
         teamName: toTrimmed(ownerForm.teamName),
-        coinsLeft: Number(ownerForm.coinsLeft),
       });
 
       setSuccess('Owner and team registration completed. You can now sign in as owner.');
@@ -277,7 +266,6 @@ const EventSignupPage = () => {
         ownerPassword: '',
         avatarUrl: '',
         teamName: '',
-        coinsLeft: 0,
       });
     } catch (submitError) {
       setError(submitError.message || 'Owner signup could not be completed');
@@ -310,7 +298,6 @@ const EventSignupPage = () => {
         playerEmail: toTrimmed(playerForm.playerEmail).toLowerCase(),
         playerRole: toTrimmed(playerForm.playerRole),
         rankPoint: Number(playerForm.rankPoint),
-        basePrice: Number(playerForm.basePrice),
         imageUrl: toTrimmed(playerForm.imageUrl) || undefined,
       });
 
@@ -321,7 +308,6 @@ const EventSignupPage = () => {
         playerEmail: '',
         playerRole: '',
         rankPoint: 0,
-        basePrice: 0,
         imageUrl: '',
       });
     } catch (submitError) {
@@ -420,19 +406,6 @@ const EventSignupPage = () => {
                   />
                 </label>
 
-                <label className="block">
-                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Team Coins</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100000"
-                    step="1"
-                    value={ownerForm.coinsLeft}
-                    onChange={(e) => setOwnerForm({ ...ownerForm, coinsLeft: Number(e.target.value || 0) })}
-                    className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                  />
-                </label>
-
                 <label className="block sm:col-span-2">
                   <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Avatar Image Upload (optional)</span>
                   <input
@@ -506,14 +479,16 @@ const EventSignupPage = () => {
 
                 <label className="block">
                   <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Role</span>
-                  <input
-                    type="text"
+                  <select
                     value={playerForm.playerRole}
                     onChange={(e) => setPlayerForm({ ...playerForm, playerRole: e.target.value })}
                     className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                    placeholder="e.g. IGL"
-                    autoComplete="off"
-                  />
+                  >
+                    <option value="">-- Select Role --</option>
+                    {VALID_PLAYER_ROLES.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="block">
@@ -537,19 +512,6 @@ const EventSignupPage = () => {
                     step="1"
                     value={playerForm.rankPoint}
                     onChange={(e) => setPlayerForm({ ...playerForm, rankPoint: Number(e.target.value || 0) })}
-                    className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Base Price</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100000"
-                    step="1"
-                    value={playerForm.basePrice}
-                    onChange={(e) => setPlayerForm({ ...playerForm, basePrice: Number(e.target.value || 0) })}
                     className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
                   />
                 </label>

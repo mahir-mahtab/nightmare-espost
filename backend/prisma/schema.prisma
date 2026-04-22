@@ -24,6 +24,8 @@ model Event {
   auctionWindowSeconds Int            @default(30) @map("auction_window_seconds")
   bannerUrl            String?        @map("banner_url")
   sponsorImageUrl      String?        @map("sponsor_image_url")
+  playerBasePrice      Int            @default(1000) @map("player_base_price")
+  ownerCoins           Int            @default(10000) @map("owner_coins")
   status               EventStatus    @default(UPCOMING)
   createdAt            DateTime       @default(now()) @map("created_at")
   updatedAt            DateTime       @updatedAt @map("updated_at")
@@ -43,6 +45,13 @@ enum EventStatus {
   UPCOMING
   LIVE
   COMPLETED
+}
+
+enum PlayerRole {
+  IGL
+  Support
+  Assaulter
+  Sniper
 }
 
 model Team {
@@ -84,7 +93,7 @@ model Player {
   event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name         String
   email        String
-  role         String
+  role         PlayerRole
   rankPoint    Int           @default(0) @map("rank_point")
   basePrice    Int           @default(0) @map("base_price")
   imageUrl     String?       @map("image_url")

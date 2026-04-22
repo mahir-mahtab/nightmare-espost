@@ -84,6 +84,22 @@ const formatActivityTime = (value) => {
 
 const lotNameFromAuctionLot = (lot) => lot?.player?.name || lot?.playerName || lot?.playerId || 'Unknown player';
 
+const PLAYER_ROLE_OPTIONS = ['IGL', 'Support', 'Assaulter', 'Sniper'];
+
+const toIsoDateTimeString = (value) => {
+  const text = toText(value).trim();
+  if (!text) {
+    return undefined;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return parsed.toISOString();
+};
+
 const apiErrorMessage = (payload, fallbackMessage) => {
   const baseMessage = payload?.message || fallbackMessage;
 
@@ -104,7 +120,6 @@ const apiErrorMessage = (payload, fallbackMessage) => {
 const EVENT_SLUG_REGEX = /^[a-z0-9-]{3,100}$/;
 const PERSON_NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
 const TEAM_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
-const PLAYER_ROLE_REGEX = /^[A-Za-z][A-Za-z0-9\s/-]{0,39}$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -147,6 +162,10 @@ const validateEventForm = (formData) => {
   }
   if (!isIntInRange(formData.auctionWindowSeconds, 10, 300)) {
     return 'Auction window must be a whole number between 10 and 300 seconds.';
+  }
+  const streamStartTime = toOptional(formData.streamStartTime);
+  if (streamStartTime && Number.isNaN(Date.parse(streamStartTime))) {
+    return 'Stream start time must be a valid date and time.';
   }
   if (!isValidUrl(toOptional(formData.bannerUrl))) {
     return 'Banner URL must be a valid URL.';
@@ -204,8 +223,8 @@ const validatePlayerForm = (formData) => {
   if (!EMAIL_REGEX.test(toText(formData.email).trim().toLowerCase())) {
     return 'Player email format is invalid.';
   }
-  if (!PLAYER_ROLE_REGEX.test(toText(formData.role).trim())) {
-    return 'Player role format is invalid.';
+  if (!PLAYER_ROLE_OPTIONS.includes(toText(formData.role).trim())) {
+    return 'Player role must be one of: IGL, Support, Assaulter, Sniper.';
   }
   if (!isIntInRange(formData.rankPoint, 0, 100)) {
     return 'Rank point must be a whole number between 0 and 100.';
@@ -934,10 +953,12 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
     password: toText(eventData.password),
     registrationCount: Number(eventData.registrationCount || 0),
     maxSlots: Number(eventData.maxSlots || 0),
-    streamStartTime: toText(eventData.streamStartTime),
+    streamStartTime: toLocalDateTimeInput(eventData.streamStartTime),
     auctionWindowSeconds: Number(eventData.auctionWindowSeconds || 30),
     bannerUrl: toText(eventData.bannerUrl),
     sponsorImageUrl: toText(eventData.sponsorImageUrl),
+    playerBasePrice: Number(eventData.playerBasePrice || 1000),
+    ownerCoins: Number(eventData.ownerCoins || 10000),
     status: toText(eventData.status || 'UPCOMING'),
   });
   const [saving, setSaving] = useState(false);
@@ -952,10 +973,12 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
       password: toText(eventData.password),
       registrationCount: Number(eventData.registrationCount || 0),
       maxSlots: Number(eventData.maxSlots || 0),
-      streamStartTime: toText(eventData.streamStartTime),
+      streamStartTime: toLocalDateTimeInput(eventData.streamStartTime),
       auctionWindowSeconds: Number(eventData.auctionWindowSeconds || 30),
       bannerUrl: toText(eventData.bannerUrl),
       sponsorImageUrl: toText(eventData.sponsorImageUrl),
+      playerBasePrice: Number(eventData.playerBasePrice || 1000),
+      ownerCoins: Number(eventData.ownerCoins || 10000),
       status: toText(eventData.status || 'UPCOMING'),
     });
   }, [eventData]);
@@ -982,10 +1005,12 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
         password: formData.password,
         registrationCount: Number(formData.registrationCount),
         maxSlots: Number(formData.maxSlots),
-        streamStartTime: toOptional(formData.streamStartTime),
+        streamStartTime: toIsoDateTimeString(formData.streamStartTime),
         auctionWindowSeconds: Number(formData.auctionWindowSeconds),
         bannerUrl: toOptional(formData.bannerUrl),
         sponsorImageUrl: toOptional(formData.sponsorImageUrl),
+        playerBasePrice: Number(formData.playerBasePrice),
+        ownerCoins: Number(formData.ownerCoins),
         status: formData.status,
       };
 
@@ -1047,7 +1072,12 @@ const EditEventTab = ({ eventData, token, onSaved, onError }) => {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Stream Start Time" value={formData.streamStartTime} onChange={(v) => setFormData({ ...formData, streamStartTime: v })} />
+        <NumberField label="Player Base Price" value={formData.playerBasePrice} onChange={(v) => setFormData({ ...formData, playerBasePrice: v })} />
+        <NumberField label="Owner Coins (Team Budget)" value={formData.ownerCoins} onChange={(v) => setFormData({ ...formData, ownerCoins: v })} />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DateTimeField label="Stream Start Time" value={formData.streamStartTime} onChange={(v) => setFormData({ ...formData, streamStartTime: v })} />
         <Field label="Banner URL" value={formData.bannerUrl} onChange={(v) => setFormData({ ...formData, bannerUrl: v })} />
       </div>
 
@@ -1584,7 +1614,12 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-6">
         <input type="text" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Player name" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="Player email" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
-        <input type="text" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })} placeholder="Role" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
+        <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary">
+          <option value="">Select role</option>
+          {PLAYER_ROLE_OPTIONS.map((role) => (
+            <option key={role} value={role}>{role}</option>
+          ))}
+        </select>
         <input type="number" value={createForm.rankPoint} onChange={(e) => setCreateForm({ ...createForm, rankPoint: Number(e.target.value || 0) })} placeholder="Rank" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="number" value={createForm.basePrice} onChange={(e) => setCreateForm({ ...createForm, basePrice: Number(e.target.value || 0) })} placeholder="Base price" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <button type="button" disabled={creating || !createForm.name.trim() || !createForm.email.trim() || !createForm.role.trim()} onClick={handleCreate} className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50">
@@ -1598,7 +1633,13 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
           player.id,
           editingId === player.id ? <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : player.name,
           editingId === player.id ? <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : (player.email || '-'),
-          editingId === player.id ? <input value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : player.role,
+          editingId === player.id ? (
+            <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary">
+              {PLAYER_ROLE_OPTIONS.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          ) : player.role,
           editingId === player.id ? <input type="number" value={editForm.rankPoint} onChange={(e) => setEditForm({ ...editForm, rankPoint: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.rankPoint),
           editingId === player.id ? <input type="number" value={editForm.basePrice} onChange={(e) => setEditForm({ ...editForm, basePrice: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.basePrice),
           editingId === player.id ? (
@@ -2385,20 +2426,20 @@ const BulkUploadModal = ({ eventId, token, initialType, onClose, onSuccess, onEr
 
   const exampleByType = {
     owners: `[
-  { "name": "Owner One", "password": "ownerpass123", "avatarUrl": "https://example.com/owner1.png" }
+  { "name": "Owner One", "email": "owner1@example.com", "password": "ownerpass123", "avatarUrl": "https://example.com/owner1.png" }
 ]`,
     teams: `[
   { "name": "Team Alpha", "ownerId": "OWNER_UUID_HERE", "coinsLeft": 5000 }
 ]`,
     players: `[
-  { "name": "Player One", "role": "IGL", "rankPoint": 92, "basePrice": 1200, "imageUrl": "https://example.com/player1.jpg" }
+  { "name": "Player One", "email": "player1@example.com", "role": "IGL", "rankPoint": 92, "basePrice": 1200, "imageUrl": "https://example.com/player1.jpg" }
 ]`,
   };
 
   const schemaNoteByType = {
-    owners: 'Schema requires: name + password. Optional: avatarUrl (must be valid URL).',
+    owners: 'Schema requires: name + email + password. Optional: avatarUrl (valid URL).',
     teams: 'Schema requires: name + ownerId(UUID). Optional: coinsLeft.',
-    players: 'Schema requires: name + role. Optional: rankPoint, basePrice, imageUrl(valid URL).',
+    players: 'Schema requires: name + email + role(IGL/Support/Assaulter/Sniper). Optional: rankPoint, basePrice, imageUrl(valid URL).',
   };
 
   const handleUpload = async () => {
@@ -2528,7 +2569,7 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
         password: formData.password,
         registrationCount: Number(formData.registrationCount),
         maxSlots: Number(formData.maxSlots),
-        streamStartTime: toOptional(formData.streamStartTime),
+        streamStartTime: toIsoDateTimeString(formData.streamStartTime),
         auctionWindowSeconds: Number(formData.auctionWindowSeconds),
         bannerUrl: toOptional(formData.bannerUrl),
         sponsorImageUrl: toOptional(formData.sponsorImageUrl),
@@ -2578,7 +2619,7 @@ const CreateEventModal = ({ token, onClose, onSuccess, onError }) => {
               <NumberField label="Registrations" value={formData.registrationCount} onChange={(v) => setFormData({ ...formData, registrationCount: v })} />
               <NumberField label="Max Slots" value={formData.maxSlots} onChange={(v) => setFormData({ ...formData, maxSlots: v })} />
               <NumberField label="Auction Window" value={formData.auctionWindowSeconds} onChange={(v) => setFormData({ ...formData, auctionWindowSeconds: v })} />
-              <Field label="Stream Start" value={formData.streamStartTime} onChange={(v) => setFormData({ ...formData, streamStartTime: v })} />
+              <DateTimeField label="Stream Start" value={formData.streamStartTime} onChange={(v) => setFormData({ ...formData, streamStartTime: v })} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Banner URL" value={formData.bannerUrl} onChange={(v) => setFormData({ ...formData, bannerUrl: v })} />
@@ -2651,6 +2692,19 @@ const Field = ({ label, value, onChange, required = false }) => (
     {label}
     <input
       type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+      className="mt-2 h-10 w-full rounded border border-white/30 bg-black/50 px-3 text-sm text-white outline-none focus:border-primary"
+    />
+  </label>
+);
+
+const DateTimeField = ({ label, value, onChange, required = false }) => (
+  <label className="block text-xs font-bold uppercase text-white/70">
+    {label}
+    <input
+      type="datetime-local"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required={required}
