@@ -143,7 +143,7 @@ curl -X POST http://localhost:3000/api/events/EVENT_ID/auth/login \
   {
     "name": "Player1",
     "role": "IGL",
-    "rankPoint": 95,
+    "rank": "95",
     "basePrice": 1000,
     "imageUrl": "https://example.com/player.jpg"
   }

@@ -5,7 +5,7 @@
 
 */
 -- CreateEnum
-CREATE TYPE "PlayerRole" AS ENUM ('ES_P', 'NES_P', 'IGL', 'Support', 'Assaulter', 'Sniper');
+CREATE TYPE "PlayerRole" AS ENUM ('IGL', 'Support', 'Assaulter', 'Sniper');
 
 -- AlterTable
 ALTER TABLE "events" ADD COLUMN     "owner_coins" INTEGER NOT NULL DEFAULT 10000,

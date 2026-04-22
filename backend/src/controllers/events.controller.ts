@@ -210,9 +210,8 @@ export const eventsController = {
       const event = await eventService.getEvent(eventId);
       const result = await eventService.createPlayers(event.id, [{
         name: payload.playerName,
-        email: payload.playerEmail,
         role: payload.playerRole,
-        rankPoint: payload.rankPoint,
+        rank: payload.rank,
         basePrice: event.playerBasePrice,
         imageUrl: payload.imageUrl,
       }]);

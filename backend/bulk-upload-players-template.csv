@@ -1,5 +1,5 @@
-name,email,role,rankPoint,basePrice,imageUrl
-Player One,player.one@example.com,IGL,85,1000,https://example.com/player1.png
-Player Two,player.two@example.com,Assaulter,90,1500,https://example.com/player2.png
-Player Three,player.three@example.com,Support,78,2000,https://example.com/player3.png
-Player Four,player.four@example.com,Sniper,82,1200,https://example.com/player4.png
+name,role,rank,basePrice,imageUrl
+Player One,IGL,85,1000,https://example.com/player1.png
+Player Two,Assaulter,90,1500,https://example.com/player2.png
+Player Three,Support,78,2000,https://example.com/player3.png
+Player Four,Rusher,82,1200,https://example.com/player4.png

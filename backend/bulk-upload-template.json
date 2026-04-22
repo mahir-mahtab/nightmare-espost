@@ -28,25 +28,22 @@
   "players": [
     {
       "name": "Player Name 1",
-      "email": "player1@example.com",
       "role": "IGL",
-      "rankPoint": 95,
+      "rank": "95",
       "basePrice": 1000,
       "imageUrl": "https://images.unsplash.com/photo-1508341591423-4347099e1f19?w=500&h=600&fit=crop"
     },
     {
       "name": "Player Name 2",
-      "email": "player2@example.com",
       "role": "Assaulter",
-      "rankPoint": 88,
+      "rank": "88",
       "basePrice": 850,
       "imageUrl": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=500&h=600&fit=crop"
     },
     {
       "name": "Player Name 3",
-      "email": "player3@example.com",
       "role": "Support",
-      "rankPoint": 85,
+      "rank": "85",
       "basePrice": 800,
       "imageUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&h=600&fit=crop"
     }
@@ -54,7 +51,7 @@
   "notes": {
     "workflow": "1. Upload owners first (with password), 2. Get owner UUIDs from Prisma Studio or API response, 3. Upload teams with correct ownerId, 4. Upload players",
     "imageUrls": "Use Unsplash or any public image URL. Format: ?w=WIDTH&h=HEIGHT&fit=crop",
-    "roles": "Allowed roles: IGL, Assaulter, Support, Sniper",
+    "roles": "Allowed roles: IGL, Assaulter, Support, Rusher",
     "basePrice": "Starting auction price in coins (e.g., 500, 1000, 1500)",
     "coinsLeft": "Total coins each team has for bidding (e.g., 5000)"
   }

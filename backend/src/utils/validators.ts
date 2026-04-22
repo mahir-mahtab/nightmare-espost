@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-const personNameRegex = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
+const personNameRegex = /^.{1,100}$/;
 const teamNameRegex = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const eventIdOrSlugRegex = /^[A-Za-z0-9-]{3,120}$/;
 const cloudinaryFolderRegex = /^[A-Za-z0-9/_-]{1,120}$/;
-const playerRoleValues = ['IGL', 'Support', 'Assaulter', 'Sniper'] as const;
+const playerRoleValues = ['IGL', 'Support', 'Assaulter', 'Rusher'] as const;
 const emailSchema = z.string().trim().email().max(255).transform((value) => value.toLowerCase());
 
 // Event validation schemas
@@ -55,9 +55,8 @@ export const updateOwnerSchema = z.object({
 // Player validation schemas
 export const createPlayerSchema = z.object({
   name: z.string().min(2).max(255),
-  email: emailSchema,
   role: z.enum(playerRoleValues),
-  rankPoint: z.coerce.number().int().min(0).max(100).default(0),
+  rank: z.string().trim().min(1).max(100),
   basePrice: z.coerce.number().int().min(0).default(0),
   imageUrl: z.string().url().optional(),
 });
@@ -102,7 +101,7 @@ export const eventLoginSchema = z.object({
 
 export const ownerSignupSchema = z.object({
   eventPassword: z.string().min(4).max(50),
-  ownerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Owner name format is invalid'),
+  ownerName: z.string().trim().min(1).max(100).regex(personNameRegex, 'Owner name format is invalid'),
   ownerEmail: emailSchema,
   ownerPassword: z.string().trim().min(6).max(100),
   avatarUrl: z.string().trim().url().optional(),
@@ -111,10 +110,9 @@ export const ownerSignupSchema = z.object({
 
 export const playerSignupSchema = z.object({
   eventPassword: z.string().min(4).max(50),
-  playerName: z.string().trim().min(2).max(100).regex(personNameRegex, 'Player name format is invalid'),
-  playerEmail: emailSchema,
+  playerName: z.string().trim().min(1).max(100).regex(personNameRegex, 'Player name format is invalid'),
   playerRole: z.enum(playerRoleValues),
-  rankPoint: z.coerce.number().int().min(0).max(100).default(0),
+  rank: z.string().trim().min(1).max(100),
   imageUrl: z.string().trim().url().optional(),
 });
 

@@ -233,7 +233,7 @@ const PlayerGrid = ({ players, onSelect }) => (
           </div>
           <div>
             <p className="text-[9px] tracking-[0.16em] text-white/40 uppercase">Rank</p>
-            <p className="font-display text-[11px] font-bold md:text-xs">{player.rankPoint}</p>
+            <p className="font-display text-[11px] font-bold md:text-xs">{player.rank}</p>
           </div>
         </div>
       </button>
@@ -255,44 +255,54 @@ const AuctionLotTile = ({ lot, player, isActive, onSelect }) => {
     <button
       type="button"
       onClick={() => onSelect(lot.id)}
-      className={`group relative w-full overflow-hidden rounded-xl border p-2 text-left transition-all ${
+      className={`group relative w-full overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
         isActive ? 'border-primary/75 bg-primary/14' : 'border-white/15 bg-black/45 hover:border-primary/45'
       }`}
     >
-      <div className="flex items-center gap-2.5">
-        <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md border border-white/20 bg-white">
-          <img src={playerImage} alt={player.name} className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105" />
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md border border-white/20 bg-white">
+            <img src={playerImage} alt={player.name} className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105" />
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase ${lotStatusStyle}`}>
+              {lotStatus}
+            </span>
+            <p className="text-[10px] font-bold text-primary">{lot.currentBid}</p>
+          </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-black tracking-[0.08em] text-white uppercase">{player.name}</p>
-          <p className="mt-0.5 truncate text-[10px] text-white/60">{playerRole}</p>
-        </div>
-
-        <div className="flex flex-col items-end gap-1">
-          <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase ${lotStatusStyle}`}>
-            {lotStatus}
-          </span>
-          <p className="text-[10px] font-bold text-primary">{lot.currentBid}</p>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black tracking-[0.08em] text-white uppercase leading-tight break-words">{player.name}</p>
+          <p className="mt-0.5 text-[10px] text-white/60">{playerRole}</p>
         </div>
       </div>
     </button>
   );
 };
 
-const AuctionOwnerTile = ({ owner, isLeader }) => (
-  <div
-    className={`flex items-center gap-2 rounded-xl border p-2 transition-all ${
-      isLeader ? 'border-primary/70 bg-primary/12' : 'border-white/15 bg-black/45'
-    }`}
-  >
-    <img src={owner.avatar} alt={owner.name} className="h-10 w-14 rounded-md border border-white/20 object-cover" />
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-[11px] font-bold tracking-[0.08em] text-white uppercase">{owner.name}</p>
-      <p className={`text-[10px] ${isLeader ? 'text-primary' : 'text-white/45'}`}>{isLeader ? 'Top bid' : 'Watching'}</p>
+const AuctionOwnerTile = ({ owner, isLeader }) => {
+  const coinsLeft = Number.isFinite(Number(owner?.coinsLeft)) ? Number(owner.coinsLeft) : 0;
+
+  return (
+    <div
+      className={`flex flex-col gap-2 rounded-xl border p-2.5 transition-all ${
+        isLeader ? 'border-primary/70 bg-primary/12' : 'border-white/15 bg-black/45'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <img src={owner.avatar} alt={owner.name} className="h-10 w-14 shrink-0 rounded-md border border-white/20 object-cover" />
+        <div className="text-right shrink-0">
+          <p className="text-[9px] font-bold tracking-[0.12em] text-white/45 uppercase">Coins Left</p>
+          <p className="font-display text-base font-black text-amber-200 mt-0.5 leading-none">{coinsLeft}</p>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold tracking-[0.08em] text-white uppercase leading-tight break-words">{owner.name}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AuctionHub = ({
   auction,
@@ -303,6 +313,7 @@ const AuctionHub = ({
   selectedAuction,
   playerById,
   selectedOwner,
+  loggedInOwner,
   owners,
   canBid,
   increments,
@@ -360,7 +371,7 @@ const AuctionHub = ({
                 <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-black/45 p-3">
                   <BidMeta label="Role" value={selectedPlayer?.role || '-'} />
                   <BidMeta label="Current" value={selectedAuction?.currentBid || selectedPlayer?.nmCoin || '-'} />
-                  <BidMeta label="Rank" value={selectedPlayer?.rankPoint || '-'} />
+                  <BidMeta label="Rank" value={selectedPlayer?.rank || '-'} />
                 </div>
 
                 <div className="rounded-xl border border-primary/25 bg-black/55 p-3">
@@ -413,6 +424,13 @@ const AuctionHub = ({
               </div>
             </div>
 
+            {canBid && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-white/8 bg-black/60 px-3 py-2">
+                <p className="text-[9px] font-bold tracking-[0.16em] text-white/50 uppercase">Your Balance</p>
+                <p className="font-display text-lg font-black text-amber-200">{Number(loggedInOwner?.coinsLeft || 0)}</p>
+              </div>
+            )}
+
             <div className="mt-3 space-y-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                 <Motion.div
@@ -453,7 +471,11 @@ const AuctionHub = ({
                 <p className="font-display text-base font-black uppercase text-white">Owners</p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {owners.map((owner) => (
-                    <AuctionOwnerTile key={owner.id} owner={owner} isLeader={selectedOwner?.id === owner.id} />
+                    <AuctionOwnerTile
+                      key={owner.id}
+                      owner={owner}
+                      isLeader={selectedOwner?.id === owner.id}
+                    />
                   ))}
                 </div>
               </CyberCard>
@@ -468,7 +490,11 @@ const AuctionHub = ({
           </div>
           <div className="mt-3 space-y-2 overflow-y-auto pr-1">
             {owners.map((owner) => (
-              <AuctionOwnerTile key={owner.id} owner={owner} isLeader={selectedOwner?.id === owner.id} />
+              <AuctionOwnerTile
+                key={owner.id}
+                owner={owner}
+                isLeader={selectedOwner?.id === owner.id}
+              />
             ))}
           </div>
         </CyberCard>
@@ -746,8 +772,9 @@ const EventsPage = () => {
   }, [session, eventId]);
 
   const refreshBoard = useCallback(async () => {
-    const [auctionPayload, allPlayersPayload, filteredPlayers] = await Promise.all([
+    const [auctionPayload, teamPayload, allPlayersPayload, filteredPlayers] = await Promise.all([
       eventsService.getAuctionBoard(eventId, session?.sessionToken),
+      eventsService.getTeams(eventId, session?.sessionToken),
       eventsService.listPlayers(eventId, session?.sessionToken),
       eventsService.listPlayers(eventId, session?.sessionToken, {
         search,
@@ -759,6 +786,7 @@ const EventsPage = () => {
 
     setAuction(auctionPayload);
     setAuctionStateBoard(auctionPayload);
+    setTeams(teamPayload);
     setAllPlayers(allPlayersPayload);
     setPlayers(filteredPlayers);
   }, [eventId, session, search, roleFilter, teamFilter, statusFilter]);
@@ -1053,6 +1081,14 @@ const EventsPage = () => {
           lots: (prev.lots || []).map((item) => (item.id === lot.id ? { ...item, ...lot } : item)),
         };
       });
+
+      if (incomingStatus === 'sold' || incomingStatus === 'unsold') {
+        void eventsService.getTeams(eventId, session?.sessionToken)
+          .then((teamPayload) => {
+            setTeams(teamPayload);
+          })
+          .catch(() => {});
+      }
     });
 
     socket.on('active_lot_changed', ({ eventId: incomingEventId, newLotId }) => {
@@ -1146,8 +1182,27 @@ const EventsPage = () => {
   );
 
   const ownerById = useMemo(
-    () => Object.fromEntries(owners.map((owner) => [owner.id, owner])),
-    [owners],
+    () => {
+      const coinsByOwnerId = Object.fromEntries(
+        teams.map((team) => [team.ownerId, Number(team.coinsLeft || 0)]),
+      );
+
+      return Object.fromEntries(
+        owners.map((owner) => [
+          owner.id,
+          {
+            ...owner,
+            coinsLeft: Number(coinsByOwnerId[owner.id] || 0),
+          },
+        ]),
+      );
+    },
+    [owners, teams],
+  );
+
+  const ownersWithCoins = useMemo(
+    () => owners.map((owner) => ownerById[owner.id] || owner),
+    [owners, ownerById],
   );
 
   const selectedAuction = useMemo(
@@ -1160,6 +1215,7 @@ const EventsPage = () => {
 
   const selectedPlayer = selectedAuction ? playerById[selectedAuction.playerId] : null;
   const selectedOwner = selectedAuction ? ownerById[selectedAuction.currentOwnerId] : null;
+  const loggedInOwner = canBid ? ownerById[session?.ownerId] || null : null;
 
   useEffect(() => {
     if (!auction?.lots?.length) {
@@ -1345,7 +1401,8 @@ const EventsPage = () => {
         selectedAuction={selectedAuction}
         playerById={playerById}
         selectedOwner={selectedOwner}
-        owners={owners}
+        loggedInOwner={loggedInOwner}
+        owners={ownersWithCoins}
         canBid={canBid}
         increments={increments}
         onPlaceBid={handlePlaceBid}

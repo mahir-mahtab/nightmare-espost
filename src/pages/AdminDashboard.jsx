@@ -84,7 +84,7 @@ const formatActivityTime = (value) => {
 
 const lotNameFromAuctionLot = (lot) => lot?.player?.name || lot?.playerName || lot?.playerId || 'Unknown player';
 
-const PLAYER_ROLE_OPTIONS = ['IGL', 'Support', 'Assaulter', 'Sniper'];
+const PLAYER_ROLE_OPTIONS = ['IGL', 'Support', 'Assaulter', 'Rusher'];
 
 const toIsoDateTimeString = (value) => {
   const text = toText(value).trim();
@@ -217,17 +217,15 @@ const validateTeamForm = (formData) => {
 
 const validatePlayerForm = (formData) => {
   const name = toText(formData.name).trim();
+  const rank = toText(formData.rank).trim();
   if (name.length < 2 || name.length > 255) {
     return 'Player name must be 2-255 characters.';
   }
-  if (!EMAIL_REGEX.test(toText(formData.email).trim().toLowerCase())) {
-    return 'Player email format is invalid.';
-  }
   if (!PLAYER_ROLE_OPTIONS.includes(toText(formData.role).trim())) {
-    return 'Player role must be one of: IGL, Support, Assaulter, Sniper.';
+    return 'Player role must be one of: IGL, Support, Assaulter, Rusher.';
   }
-  if (!isIntInRange(formData.rankPoint, 0, 100)) {
-    return 'Rank point must be a whole number between 0 and 100.';
+  if (!rank || rank.length > 100) {
+    return 'Rank must be 1-100 characters.';
   }
   if (!isIntInRange(formData.basePrice, 0, 100000)) {
     return 'Base price must be a whole number between 0 and 100000.';
@@ -1478,17 +1476,15 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
   const [editingId, setEditingId] = useState('');
   const [createForm, setCreateForm] = useState({
     name: '',
-    email: '',
     role: '',
-    rankPoint: 0,
+    rank: '',
     basePrice: 0,
     imageUrl: '',
   });
   const [editForm, setEditForm] = useState({
     name: '',
-    email: '',
     role: '',
-    rankPoint: 0,
+    rank: '',
     basePrice: 0,
     imageUrl: '',
     status: 'ACTIVE',
@@ -1515,9 +1511,8 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: createForm.name,
-          email: createForm.email.trim().toLowerCase(),
           role: createForm.role,
-          rankPoint: Number(createForm.rankPoint),
+          rank: toText(createForm.rank).trim(),
           basePrice: Number(createForm.basePrice),
           imageUrl: createForm.imageUrl || undefined,
         }),
@@ -1526,7 +1521,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
       if (!response.ok) {
         throw new Error(apiErrorMessage(payload, 'Unable to create player'));
       }
-      setCreateForm({ name: '', email: '', role: '', rankPoint: 0, basePrice: 0, imageUrl: '' });
+      setCreateForm({ name: '', role: '', rank: '', basePrice: 0, imageUrl: '' });
       onChanged('Player created successfully');
     } catch (err) {
       onError(err.message || 'Unable to create player');
@@ -1539,9 +1534,8 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
     setEditingId(player.id);
     setEditForm({
       name: player.name || '',
-      email: player.email || '',
       role: player.role || '',
-      rankPoint: Number(player.rankPoint || 0),
+      rank: player.rank || '',
       basePrice: Number(player.basePrice || 0),
       imageUrl: player.imageUrl || '',
       status: player.status || 'ACTIVE',
@@ -1568,9 +1562,8 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
         },
         body: JSON.stringify({
           name: editForm.name,
-          email: editForm.email.trim().toLowerCase(),
           role: editForm.role,
-          rankPoint: Number(editForm.rankPoint),
+          rank: toText(editForm.rank).trim(),
           basePrice: Number(editForm.basePrice),
           imageUrl: editForm.imageUrl || undefined,
           status: editForm.status,
@@ -1611,28 +1604,26 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-6">
+      <div className="grid gap-3 rounded border border-white/15 bg-black/40 p-3 sm:grid-cols-5">
         <input type="text" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Player name" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
-        <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="Player email" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })} className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary">
           <option value="">Select role</option>
           {PLAYER_ROLE_OPTIONS.map((role) => (
             <option key={role} value={role}>{role}</option>
           ))}
         </select>
-        <input type="number" value={createForm.rankPoint} onChange={(e) => setCreateForm({ ...createForm, rankPoint: Number(e.target.value || 0) })} placeholder="Rank" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
+        <input type="text" value={createForm.rank} onChange={(e) => setCreateForm({ ...createForm, rank: e.target.value })} placeholder="Rank" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
         <input type="number" value={createForm.basePrice} onChange={(e) => setCreateForm({ ...createForm, basePrice: Number(e.target.value || 0) })} placeholder="Base price" className="h-10 rounded border border-white/30 bg-black/60 px-3 text-sm text-white outline-none focus:border-primary" />
-        <button type="button" disabled={creating || !createForm.name.trim() || !createForm.email.trim() || !createForm.role.trim()} onClick={handleCreate} className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50">
+        <button type="button" disabled={creating || !createForm.name.trim() || !createForm.role.trim() || !createForm.rank.trim()} onClick={handleCreate} className="h-10 rounded border border-primary bg-primary px-3 text-xs font-bold uppercase text-black disabled:opacity-50">
           {creating ? 'Creating...' : 'Add Player'}
         </button>
       </div>
 
       <DataTable
-        columns={['Player ID', 'Name', 'Email', 'Role', 'Rank', 'Base Price', 'Status', 'Sold Team', 'Final Price', 'Actions']}
+        columns={['Player ID', 'Name', 'Role', 'Rank', 'Base Price', 'Status', 'Sold Team', 'Final Price', 'Actions']}
         rows={players.map((player) => [
           player.id,
           editingId === player.id ? <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : player.name,
-          editingId === player.id ? <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : (player.email || '-'),
           editingId === player.id ? (
             <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary">
               {PLAYER_ROLE_OPTIONS.map((role) => (
@@ -1640,7 +1631,7 @@ const PlayersTab = ({ players, teams, eventId, token, onError, onChanged }) => {
               ))}
             </select>
           ) : player.role,
-          editingId === player.id ? <input type="number" value={editForm.rankPoint} onChange={(e) => setEditForm({ ...editForm, rankPoint: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.rankPoint),
+          editingId === player.id ? <input type="text" value={editForm.rank} onChange={(e) => setEditForm({ ...editForm, rank: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.rank),
           editingId === player.id ? <input type="number" value={editForm.basePrice} onChange={(e) => setEditForm({ ...editForm, basePrice: Number(e.target.value || 0) })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary" /> : toText(player.basePrice),
           editingId === player.id ? (
             <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="h-9 w-full rounded border border-white/30 bg-black/60 px-2 text-xs text-white outline-none focus:border-primary">
@@ -2432,14 +2423,14 @@ const BulkUploadModal = ({ eventId, token, initialType, onClose, onSuccess, onEr
   { "name": "Team Alpha", "ownerId": "OWNER_UUID_HERE", "coinsLeft": 5000 }
 ]`,
     players: `[
-  { "name": "Player One", "email": "player1@example.com", "role": "IGL", "rankPoint": 92, "basePrice": 1200, "imageUrl": "https://example.com/player1.jpg" }
+  { "name": "Player One", "role": "IGL", "rank": "92", "basePrice": 1200, "imageUrl": "https://example.com/player1.jpg" }
 ]`,
   };
 
   const schemaNoteByType = {
     owners: 'Schema requires: name + email + password. Optional: avatarUrl (valid URL).',
     teams: 'Schema requires: name + ownerId(UUID). Optional: coinsLeft.',
-    players: 'Schema requires: name + email + role(IGL/Support/Assaulter/Sniper). Optional: rankPoint, basePrice, imageUrl(valid URL).',
+    players: 'Schema requires: name + role(IGL/Support/Assaulter/Rusher). Required: rank. Optional: basePrice, imageUrl(valid URL).',
   };
 
   const handleUpload = async () => {

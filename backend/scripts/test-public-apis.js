@@ -89,9 +89,9 @@ async function setupTestEvent() {
   
   // Create players
   const playersData = [
-    { name: 'Player One', email: 'player.one.public@example.com', role: 'IGL', rankPoint: 85, basePrice: 500 },
-    { name: 'Player Two', email: 'player.two.public@example.com', role: 'Support', rankPoint: 90, basePrice: 800 },
-    { name: 'Player Three', email: 'player.three.public@example.com', role: 'Assaulter', rankPoint: 75, basePrice: 300 },
+    { name: 'Player One', role: 'IGL', rank: '85', basePrice: 500 },
+    { name: 'Player Two', role: 'Support', rank: '90', basePrice: 800 },
+    { name: 'Player Three', role: 'Assaulter', rank: '75', basePrice: 300 },
   ];
   
   await fetch(`${API_BASE_URL}/api/admin/events/${testEventId}/players`, {

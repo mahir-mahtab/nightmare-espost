@@ -9,10 +9,10 @@ const toTrimmed = (value) => String(value || '').trim();
 const EVENT_PASSWORD_MIN = 4;
 const OWNER_PASSWORD_MIN = 6;
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
-const NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]{1,99}$/;
+const NAME_REGEX = /^.{1,100}$/;
 const TEAM_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_PLAYER_ROLES = ['IGL', 'Support', 'Assaulter', 'Sniper'];
+const VALID_PLAYER_ROLES = ['IGL', 'Support', 'Assaulter', 'Rusher'];
 
 const getSignupUploadFolder = (eventId, role) => `${toTrimmed(eventId)}/signup/${role}`;
 
@@ -69,9 +69,8 @@ const validateOwnerForm = (values) => {
 const validatePlayerForm = (values) => {
   const eventPassword = toTrimmed(values.eventPassword);
   const playerName = toTrimmed(values.playerName);
-  const playerEmail = toTrimmed(values.playerEmail).toLowerCase();
   const playerRole = toTrimmed(values.playerRole);
-  const rankPoint = Number(values.rankPoint);
+  const rank = toTrimmed(values.rank);
   const imageUrl = toTrimmed(values.imageUrl);
 
   if (eventPassword.length < EVENT_PASSWORD_MIN) {
@@ -80,14 +79,11 @@ const validatePlayerForm = (values) => {
   if (!NAME_REGEX.test(playerName)) {
     return 'Player name format is invalid.';
   }
-  if (!EMAIL_REGEX.test(playerEmail)) {
-    return 'Player email format is invalid.';
-  }
   if (!VALID_PLAYER_ROLES.includes(playerRole)) {
     return 'Player role must be selected from available options.';
   }
-  if (!Number.isInteger(rankPoint) || rankPoint < 0 || rankPoint > 100) {
-    return 'Rank point must be a whole number between 0 and 100.';
+  if (!rank) {
+    return 'Rank is required.';
   }
   if (imageUrl) {
     try {
@@ -124,9 +120,8 @@ const EventSignupPage = () => {
   const [playerForm, setPlayerForm] = useState({
     eventPassword: '',
     playerName: '',
-    playerEmail: '',
     playerRole: '',
-    rankPoint: 0,
+    rank: '',
     imageUrl: '',
   });
 
@@ -295,9 +290,8 @@ const EventSignupPage = () => {
       await eventsService.signupPlayer(eventId, {
         eventPassword: toTrimmed(playerForm.eventPassword),
         playerName: toTrimmed(playerForm.playerName),
-        playerEmail: toTrimmed(playerForm.playerEmail).toLowerCase(),
         playerRole: toTrimmed(playerForm.playerRole),
-        rankPoint: Number(playerForm.rankPoint),
+        rank: toTrimmed(playerForm.rank),
         imageUrl: toTrimmed(playerForm.imageUrl) || undefined,
       });
 
@@ -305,9 +299,8 @@ const EventSignupPage = () => {
       setPlayerForm({
         eventPassword: '',
         playerName: '',
-        playerEmail: '',
         playerRole: '',
-        rankPoint: 0,
+        rank: '',
         imageUrl: '',
       });
     } catch (submitError) {
@@ -492,26 +485,12 @@ const EventSignupPage = () => {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Player Email</span>
+                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Rank</span>
                   <input
-                    type="email"
-                    value={playerForm.playerEmail}
-                    onChange={(e) => setPlayerForm({ ...playerForm, playerEmail: e.target.value })}
-                    className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
-                    placeholder="player@example.com"
-                    autoComplete="off"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Rank Point</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={playerForm.rankPoint}
-                    onChange={(e) => setPlayerForm({ ...playerForm, rankPoint: Number(e.target.value || 0) })}
+                    type="text"
+                    value={playerForm.rank}
+                    onChange={(e) => setPlayerForm({ ...playerForm, rank: e.target.value })}
+                    placeholder="e.g. 92 or Elite"
                     className="h-11 w-full border border-white/20 bg-black/65 px-3 text-sm text-white outline-none focus:border-primary/70"
                   />
                 </label>

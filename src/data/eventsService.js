@@ -112,7 +112,7 @@ const mapPlayer = (player) => ({
   teamId: player.soldToTeamId || 'unassigned',
   team: player.soldToTeam?.name || 'Unassigned',
   role: toRoleLabel(player.role),
-  rankPoint: player.rankPoint,
+  rank: player.rank,
   nmCoin: player.finalPrice || player.basePrice,
   status: toPlayerStatusLabel(player.status),
   image: player.imageUrl,

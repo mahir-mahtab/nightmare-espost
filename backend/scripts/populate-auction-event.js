@@ -19,7 +19,7 @@ const toOwnerName = (index) => {
 const toOwnerEmail = (index, suffix) => `owner${String(index + 1).padStart(2, '0')}.${suffix}@example.com`;
 const toTeamName = (index) => `Franchise ${String(index + 1).padStart(2, '0')}`;
 
-const ROLES = ['IGL', 'Assaulter', 'Support', 'Sniper'];
+const ROLES = ['IGL', 'Assaulter', 'Support', 'Rusher'];
 
 const buildPlayers = (count = 28) => {
   const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry', 'Iris', 'Jack', 'Karen', 'Liam', 'Mila', 'Noah', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Sam', 'Tessa', 'Uma', 'Victor', 'Wendy', 'Xavier', 'Yara', 'Zoe'];
@@ -27,11 +27,9 @@ const buildPlayers = (count = 28) => {
   return Array.from({ length: count }, (_item, index) => ({
     name: `${firstNames[index % firstNames.length]} ${lastNames[index % lastNames.length]}`,
     role: ROLES[index % ROLES.length],
-    rankPoint: 60 + (index % 41),
+    rank: String(60 + (index % 41)),
   }));
 };
-
-const toPlayerEmail = (index, suffix) => `player${String(index + 1).padStart(2, '0')}.${suffix}@example.com`;
 
 const request = async (path, { method = 'GET', body, token } = {}) => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -109,9 +107,8 @@ async function run() {
       body: {
         eventPassword,
         playerName: player.name,
-        playerEmail: toPlayerEmail(index, suffix),
         playerRole: player.role,
-        rankPoint: player.rankPoint,
+        rank: player.rank,
       },
     });
   }

@@ -69,7 +69,7 @@ async function setupAuctionData() {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${adminToken}`,
     },
-    body: JSON.stringify([{ name: 'Auction Player', email: 'player.auction.logic@example.com', role: 'IGL', rankPoint: 90, basePrice: 1000 }]),
+    body: JSON.stringify([{ name: 'Auction Player', role: 'IGL', rank: '90', basePrice: 1000 }]),
   });
 
   const loginRes = await fetch(`${API_BASE_URL}/api/events/${eventSlug}/auth/login`, {
