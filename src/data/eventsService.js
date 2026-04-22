@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { formatDate } from '../utils/dateFormatter.js';
 
 const toRoleLabel = (role) => {
   if (!role) return '-';
@@ -77,7 +78,7 @@ const mapSummary = (summary) => ({
   mode: summary.mode,
   registration: summary.registrationCount,
   slots: summary.maxSlots,
-  streamStart: summary.streamStartTime,
+  streamStart: formatDate(summary.streamStartTime, { format: 'short' }),
   auctionWindow: `${summary.auctionWindowSeconds}s per player`,
   banner: summary.bannerUrl,
   sponsorImageUrl: summary.sponsorImageUrl,

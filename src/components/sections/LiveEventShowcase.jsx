@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { Zap, Users, Trophy, Clock, ArrowRight } from 'lucide-react';
 import { liveEventService } from '../../data/liveEventService.js';
+import { formatDate } from '../../utils/dateFormatter.js';
 
 const LiveEventShowcase = () => {
   const [event, setEvent] = useState(null);
@@ -179,7 +180,7 @@ const LiveEventShowcase = () => {
             <div className="flex items-start justify-between">
               <div>
                 <div className="font-display text-sm font-black uppercase text-primary">
-                  {eventData.streamStartTime}
+                  {formatDate(eventData.streamStartTime, { format: 'short' })}
                 </div>
                 <div className="mt-1 text-[9px] font-bold tracking-[0.1em] text-white/50 uppercase">
                   Stream

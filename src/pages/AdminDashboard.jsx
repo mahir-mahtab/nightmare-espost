@@ -13,6 +13,7 @@ import {
 import PageShell from '../components/layout/PageShell.jsx';
 import { CyberCard } from '../components/ui/index.jsx';
 import { config } from '../config.js';
+import { formatDate } from '../utils/dateFormatter.js';
 
 const API_URL = `${config.apiUrl}/admin`;
 const AUCTION_API_URL = `${config.apiUrl}/auction`;
@@ -937,7 +938,7 @@ const OverviewTab = ({ eventData }) => (
     <Metric label="Registrations" value={toText(eventData.registrationCount)} />
     <Metric label="Max Slots" value={toText(eventData.maxSlots)} />
     <Metric label="Auction Window" value={`${toText(eventData.auctionWindowSeconds)}s`} />
-    <Metric label="Stream Start" value={toText(eventData.streamStartTime) || '-'} />
+    <Metric label="Stream Start" value={formatDate(eventData.streamStartTime, { format: 'short' })} />
   </div>
 );
 

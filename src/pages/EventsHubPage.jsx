@@ -5,6 +5,7 @@ import PageShell from '../components/layout/PageShell.jsx';
 import { CyberCard } from '../components/ui/index.jsx';
 import { eventsService } from '../data/eventsService.js';
 import { eventAuthService } from '../data/eventAuthService.js';
+import { formatDate } from '../utils/dateFormatter.js';
 
 const EventsHubPage = () => {
   const navigate = useNavigate();
@@ -100,7 +101,7 @@ const EventsHubPage = () => {
               <div className="mt-7 grid gap-4 sm:grid-cols-3">
                 <StatBox label="Game" value={eventItem.game} />
                 <StatBox label="Mode" value={eventItem.mode} />
-                <StatBox label="Stream" value={eventItem.streamStartTime} />
+                <StatBox label="Stream" value={formatDate(eventItem.streamStartTime, { format: 'short' })} />
               </div>
 
               <div className="mt-8 flex justify-end">
