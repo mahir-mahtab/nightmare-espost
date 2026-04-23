@@ -50,24 +50,28 @@
 @layer base {
   body {
     background-color: var(--color-background);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255,0,0,0.07), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,0,0,0.04), transparent);
     color: var(--color-secondary);
     font-family: var(--font-body);
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
   }
-  
-  /* Custom scrollbar */
+
+  /* Custom scrollbar — thicker, pill-shaped */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-background);
+    background: rgba(255,255,255,0.03);
+    border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb {
     background: var(--color-primary);
-    border-radius: 0;
+    border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #ff3333;

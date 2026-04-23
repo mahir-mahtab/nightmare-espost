@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { io } from 'socket.io-client';
@@ -324,8 +324,8 @@ const AuctionHub = ({
   const focusedLotId = selectedAuctionId || auction.activeAuctionId;
 
   return (
-    <div className="h-full min-h-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(140deg,rgba(100,0,0,0.34),rgba(0,0,0,0.92)_62%)] p-2.5 sm:p-3 lg:p-4">
-      <div className="grid h-full min-h-0 gap-3 lg:grid-cols-[220px_minmax(0,1fr)_220px]">
+    <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(140deg,rgba(100,0,0,0.34),rgba(0,0,0,0.92)_62%)] p-2.5 sm:p-3 lg:p-4 lg:h-full lg:min-h-0 lg:overflow-hidden">
+      <div className="grid gap-3 lg:h-full lg:min-h-0 lg:grid-cols-[220px_minmax(0,1fr)_220px]">
         <CyberCard className="hidden min-h-0 overflow-hidden p-3 lg:flex lg:flex-col" hover={false}>
           <div className="flex items-center justify-between gap-2">
             <p className="font-display text-lg font-black uppercase text-white">Players</p>
@@ -346,38 +346,39 @@ const AuctionHub = ({
 
         <CyberCard className="auction-main-panel min-h-0 overflow-hidden p-3 sm:p-4 lg:p-5" accent hover={false}>
           <div className="flex h-full min-h-0 flex-col">
-            <div className="grid gap-3 md:grid-cols-[180px_1fr]">
-              <div className="relative aspect-4/3 overflow-hidden rounded-xl border border-white/15 bg-black/70">
+            {/* Player image + info — row on md+, column on mobile */}
+            <div className="grid gap-3 sm:grid-cols-[140px_1fr] md:grid-cols-[180px_1fr]">
+              <div className="relative w-full overflow-hidden rounded-xl border border-white/15 bg-black/70" style={{ aspectRatio: '4/3' }}>
                 {selectedPlayer ? (
                   <img src={selectedPlayer.image} alt={selectedPlayer.name} className="h-full w-full object-contain" />
                 ) : (
-                  <div className="flex h-52 items-center justify-center bg-black/70 text-white/45">
+                  <div className="flex h-36 items-center justify-center bg-black/70 text-white/45 sm:h-full">
                     <Gavel className="h-10 w-10" />
                   </div>
                 )}
               </div>
 
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] font-bold tracking-[0.22em] text-white/45 uppercase">Now Selecting</p>
-                    <h3 className="mt-1 font-display text-2xl font-black uppercase text-white md:text-3xl">{activePlayerName}</h3>
+                    <h3 className="mt-1 font-display text-xl font-black uppercase text-white sm:text-2xl md:text-3xl">{activePlayerName}</h3>
                   </div>
-                  <span className="rounded border border-primary/50 bg-primary/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-primary uppercase">
+                  <span className="rounded border border-primary/50 bg-primary/10 px-2 py-1 text-[9px] font-bold tracking-[0.18em] text-primary uppercase sm:px-2.5 sm:text-[10px]">
                     Live Auction
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-black/45 p-3">
+                <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-white/10 bg-black/45 p-2 sm:gap-2 sm:p-3">
                   <BidMeta label="Role" value={selectedPlayer?.role || '-'} />
                   <BidMeta label="Current" value={selectedAuction?.currentBid || selectedPlayer?.nmCoin || '-'} />
                   <BidMeta label="Rank" value={selectedPlayer?.rank || '-'} />
                 </div>
 
-                <div className="rounded-xl border border-primary/25 bg-black/55 p-3">
+                <div className="rounded-xl border border-primary/25 bg-black/55 p-2 sm:p-3">
                   <p className="text-[10px] font-bold tracking-[0.18em] text-white/45 uppercase">Current Bid</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <div className="rounded-md border border-primary/45 bg-primary/12 px-3 py-1 font-display text-2xl font-black text-primary md:text-3xl">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <div className="rounded-md border border-primary/45 bg-primary/12 px-2.5 py-1 font-display text-xl font-black text-primary sm:px-3 sm:text-2xl md:text-3xl">
                       {selectedAuction?.currentBid || 0}
                     </div>
                     <p className="text-[11px] text-white/70">
@@ -388,35 +389,36 @@ const AuctionHub = ({
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_auto]">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="mt-3 space-y-2">
+              {/* Bid input + place bid button */}
+              <div className="flex gap-2">
                 <input
                   type="number"
                   min={0}
                   value={bidAmount}
                   onChange={(event) => setBidAmount(event.target.value)}
                   disabled={!canBid}
-                  className="h-12 w-full min-w-40 flex-1 rounded border border-white/30 bg-white px-3 text-center font-display text-2xl font-black text-zinc-950 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-zinc-200"
+                  className="h-11 min-w-0 flex-1 rounded border border-white/30 bg-white px-3 text-center font-display text-xl font-black text-zinc-950 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-zinc-200 sm:h-12 sm:text-2xl"
                 />
                 <button
                   type="button"
                   onClick={onPlaceBid}
                   disabled={!canBid}
-                  className="inline-flex h-12 items-center justify-center gap-2 border border-amber-300 bg-amber-300 px-4 text-xs font-bold tracking-[0.16em] text-zinc-900 uppercase transition-all hover:bg-amber-200 disabled:cursor-not-allowed disabled:border-zinc-400 disabled:bg-zinc-400"
+                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 border border-amber-300 bg-amber-300 px-3 text-xs font-bold tracking-[0.16em] text-zinc-900 uppercase transition-all hover:bg-amber-200 disabled:cursor-not-allowed disabled:border-zinc-400 disabled:bg-zinc-400 sm:h-12 sm:px-4"
                 >
                   <Coins className="h-4 w-4" />
                   Bid
                 </button>
               </div>
-
-              <div className="flex flex-wrap gap-2">
+              {/* Increment buttons */}
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {increments.map((increment) => (
                   <button
                     key={increment}
                     type="button"
                     onClick={() => setBidAmount(String(Number(bidAmount || 0) + increment))}
                     disabled={!canBid}
-                    className="h-12 min-w-16 border border-white/25 bg-black/65 px-3 text-xs font-bold text-white transition-all hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="h-9 min-w-14 flex-1 border border-white/25 bg-black/65 px-2 text-xs font-bold text-white transition-all hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-40 sm:h-11 sm:min-w-16 sm:flex-none sm:px-3"
                   >
                     +{increment}
                   </button>
@@ -425,13 +427,13 @@ const AuctionHub = ({
             </div>
 
             {canBid && (
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-white/8 bg-black/60 px-3 py-2">
+              <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-white/8 bg-black/60 px-3 py-2">
                 <p className="text-[9px] font-bold tracking-[0.16em] text-white/50 uppercase">Your Balance</p>
-                <p className="font-display text-lg font-black text-amber-200">{Number(loggedInOwner?.coinsLeft || 0)}</p>
+                <p className="font-display text-base font-black text-amber-200 sm:text-lg">{Number(loggedInOwner?.coinsLeft || 0)}</p>
               </div>
             )}
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-1.5 sm:mt-3 sm:space-y-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                 <Motion.div
                   animate={{ width: `${Math.min(100, ((selectedAuction?.timeLeft || 0) / (auction.lotDuration || 30)) * 100)}%` }}
@@ -440,21 +442,22 @@ const AuctionHub = ({
                 />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="inline-flex items-center gap-1.5 font-display text-xl font-black text-white md:text-2xl">
+                <div className="inline-flex items-center gap-1.5 font-display text-lg font-black text-white sm:text-xl md:text-2xl">
                   <Timer className="h-4 w-4 text-primary" />
                   {String(selectedAuction?.timeLeft || 0).padStart(2, '0')} SEC
                 </div>
-                {!canBid && <p className="text-[11px] text-amber-300">Viewing mode active. Sign in as owner to place bids.</p>}
+                {!canBid && <p className="text-[10px] text-amber-300 sm:text-[11px]">Viewing mode — sign in as owner to bid.</p>}
               </div>
             </div>
 
             <div className="mt-3 grid gap-3 lg:hidden">
+              {/* Players Queue — horizontal scroll on mobile */}
               <CyberCard className="p-3" hover={false}>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-display text-base font-black uppercase text-white">Players Queue</p>
+                  <p className="font-display text-sm font-black uppercase text-white sm:text-base">Players Queue</p>
                   <p className="text-[10px] font-bold tracking-[0.16em] text-white/45 uppercase">Tap to switch</p>
                 </div>
-                <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                <div className="mt-2 grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 sm:grid-cols-3 sm:max-h-64">
                   {auction.lots.map((lot) => (
                     <AuctionLotTile
                       key={lot.id}
@@ -467,9 +470,10 @@ const AuctionHub = ({
                 </div>
               </CyberCard>
 
+              {/* Owners — 2-col grid on all mobile sizes */}
               <CyberCard className="p-3" hover={false}>
-                <p className="font-display text-base font-black uppercase text-white">Owners</p>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <p className="font-display text-sm font-black uppercase text-white sm:text-base">Owners</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
                   {owners.map((owner) => (
                     <AuctionOwnerTile
                       key={owner.id}
@@ -627,37 +631,117 @@ const BidMeta = ({ label, value }) => (
 );
 
 const SoldAnnouncementPopup = ({ data, onClose }) => {
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    const duration = 15000;
+    const interval = 80;
+    const step = (interval / duration) * 100;
+    const timer = setInterval(() => {
+      setProgress((p) => Math.max(0, p - step));
+    }, interval);
+    return () => clearInterval(timer);
+  }, []);
+
   if (!data) {
     return null;
   }
 
+  const isSold = data.type === 'sold';
+
   return (
     <Motion.div
-      initial={{ opacity: 0, y: -16, scale: 0.96 }}
+      initial={{ opacity: 0, y: 80, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -16, scale: 0.96 }}
-      className="fixed top-4 left-1/2 z-70 w-[calc(100%-2rem)] max-w-md -translate-x-1/2"
+      exit={{ opacity: 0, y: 80, scale: 0.92 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+      className="fixed bottom-6 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2"
     >
-      <div className="rounded-xl border border-emerald-400/45 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(0,0,0,0.78))] p-4 shadow-[0_16px_36px_rgba(0,0,0,0.5)] backdrop-blur">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.2em] text-emerald-300 uppercase">Player Sold</p>
-            <p className="mt-1 font-display text-lg font-black uppercase text-white">{data.playerName}</p>
-            <p className="mt-1 text-sm text-white/90">Sold to <span className="font-bold text-emerald-300">{data.ownerName}</span></p>
-            <p className="mt-1 text-xs font-bold tracking-[0.14em] text-white/70 uppercase">Final Bid: {data.amount}</p>
+      {/* Outer glow ring */}
+      <div className={`absolute -inset-px rounded-2xl blur-sm opacity-60 ${
+        isSold
+          ? 'bg-[linear-gradient(135deg,rgba(16,185,129,0.6),rgba(5,150,105,0.3))]'
+          : 'bg-[linear-gradient(135deg,rgba(244,63,94,0.6),rgba(159,18,57,0.3))]'
+      }`} />
+
+      <div className={`relative rounded-2xl border overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl ${
+        isSold
+          ? 'border-emerald-400/40 bg-[linear-gradient(145deg,rgba(6,78,59,0.6),rgba(0,0,0,0.88))]'
+          : 'border-rose-400/40 bg-[linear-gradient(145deg,rgba(76,5,25,0.6),rgba(0,0,0,0.88))]'
+      }`}>
+
+        {/* Header banner */}
+        <div className={`flex items-center gap-3 px-5 py-3 ${
+          isSold
+            ? 'bg-[linear-gradient(90deg,rgba(16,185,129,0.25),transparent)]'
+            : 'bg-[linear-gradient(90deg,rgba(244,63,94,0.25),transparent)]'
+        }`}>
+          <span className="text-2xl">{isSold ? '🎉' : '❌'}</span>
+          <p className={`font-display text-xs font-black tracking-[0.3em] uppercase ${
+            isSold ? 'text-emerald-300' : 'text-rose-300'
+          }`}>
+            {isSold ? 'Player Sold!' : 'Player Unsold'}
+          </p>
+          <div className="ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-white/20 bg-white/5 px-3 py-1 text-[10px] font-bold tracking-[0.14em] text-white/70 uppercase hover:bg-white/10 transition-colors"
+            >
+              Dismiss
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-white/30 bg-black/35 px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-white/80 uppercase hover:bg-black/60"
-          >
-            Close
-          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex items-center gap-4 px-5 py-4">
+          {/* Player image */}
+          {data.playerImage && (
+            <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/5">
+              <img src={data.playerImage} alt={data.playerName} className="h-full w-full object-cover object-top" />
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-2xl font-black uppercase leading-tight text-white sm:text-3xl">
+              {data.playerName}
+            </p>
+            {isSold ? (
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <div className={`rounded-lg border px-3 py-1.5 ${
+                  isSold ? 'border-emerald-400/40 bg-emerald-400/10' : 'border-rose-400/40 bg-rose-400/10'
+                }`}>
+                  <p className="text-[9px] font-bold tracking-[0.18em] text-white/50 uppercase">Sold To</p>
+                  <p className={`mt-0.5 text-sm font-black ${
+                    isSold ? 'text-emerald-300' : 'text-rose-300'
+                  }`}>{data.ownerName}</p>
+                </div>
+                <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5">
+                  <p className="text-[9px] font-bold tracking-[0.18em] text-white/50 uppercase">Final Bid</p>
+                  <p className="mt-0.5 font-display text-sm font-black text-amber-300">{data.amount} coins</p>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-white/55">No bids received — player returned to pool</p>
+            )}
+          </div>
+        </div>
+
+        {/* Countdown progress bar */}
+        <div className="h-1 w-full bg-white/10">
+          <div
+            className={`h-full transition-none ${
+              isSold ? 'bg-emerald-400' : 'bg-rose-400'
+            }`}
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
     </Motion.div>
   );
 };
+
 
 const normalizeLotStatus = (status) => String(status || 'pending').toLowerCase();
 
@@ -920,19 +1004,23 @@ const EventsPage = () => {
     };
 
     socket.on('connect', () => {
+      console.log('[Socket] connected');
       setSocketConnected(true);
       socket.emit('join_event', { eventId: sessionEventId || eventId });
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
+      console.log('[Socket] disconnected:', reason);
       setSocketConnected(false);
     });
 
-    socket.on('connect_error', () => {
+    socket.on('connect_error', (err) => {
+      console.warn('[Socket] connect_error:', err?.message);
       setSocketConnected(false);
     });
 
     socket.on('reconnect', () => {
+      console.log('[Socket] reconnected');
       socket.emit('join_event', { eventId: sessionEventId || eventId });
     });
 
@@ -1057,23 +1145,12 @@ const EventsPage = () => {
         return;
       }
 
+      console.log('[Socket] lot_status_changed received:', lot);
       const incomingStatus = normalizeLotStatus(lot.status);
 
       setAuction((prev) => {
         if (!prev) {
           return prev;
-        }
-
-        const previousLot = (prev.lots || []).find((item) => item.id === lot.id) || null;
-        const previousStatus = normalizeLotStatus(previousLot?.status);
-
-        if (incomingStatus === 'sold' && previousStatus !== 'sold') {
-          setSoldAnnouncement({
-            lotId: lot.id,
-            playerName: lot.playerName || previousLot?.playerName || 'Player',
-            ownerName: lot.currentOwnerName || previousLot?.currentOwnerName || 'Unknown owner',
-            amount: Number(lot.currentBid ?? previousLot?.currentBid ?? 0),
-          });
         }
 
         return {
@@ -1164,6 +1241,39 @@ const EventsPage = () => {
     return () => clearTimeout(timeout);
   }, [error]);
 
+  // --- Lot announcement: watch auction lots for sold/unsold transitions ---
+  // This fires regardless of which socket event caused the status change.
+  const prevLotsRef = useRef([]);
+  useEffect(() => {
+    const currentLots = auction?.lots || [];
+    const prevLots = prevLotsRef.current;
+
+    if (prevLots.length > 0) {
+      for (const lot of currentLots) {
+        const prevLot = prevLots.find((l) => l.id === lot.id);
+        if (!prevLot) continue;
+
+        const currentStatus = normalizeLotStatus(lot.status);
+        const previousStatus = normalizeLotStatus(prevLot.status);
+
+        if ((currentStatus === 'sold' || currentStatus === 'unsold') && previousStatus !== currentStatus) {
+          console.log('[Notification] Lot status transition detected:', previousStatus, '->', currentStatus, lot.id);
+          setSoldAnnouncement({
+            lotId: lot.id,
+            type: currentStatus,
+            playerName: lot.playerName || 'Player',
+            playerImage: lot.playerImageUrl || null,
+            ownerName: lot.currentOwnerName || 'Unknown owner',
+            amount: Number(lot.currentBid ?? 0),
+          });
+          break; // show one at a time
+        }
+      }
+    }
+
+    prevLotsRef.current = currentLots;
+  }, [auction?.lots]);
+
   useEffect(() => {
     if (!soldAnnouncement) {
       return undefined;
@@ -1171,7 +1281,7 @@ const EventsPage = () => {
 
     const timeout = setTimeout(() => {
       setSoldAnnouncement(null);
-    }, 4500);
+    }, 15000);
 
     return () => clearTimeout(timeout);
   }, [soldAnnouncement]);
@@ -1436,8 +1546,8 @@ const EventsPage = () => {
       showFooter={!isAuctionViewportTab}
       hideIntro={isAuctionViewportTab}
     >
-      <section className={isAuctionViewportTab ? 'h-[calc(100dvh-8rem)] overflow-hidden px-3 pb-3 pt-2 sm:px-4 lg:px-6 md:h-[calc(100dvh-8.5rem)]' : 'px-4 pb-12 sm:px-5 lg:px-6'}>
-        <div className={`mx-auto max-w-7xl ${isAuctionViewportTab ? 'flex h-full min-h-0 flex-col' : ''}`}>
+      <section className={isAuctionViewportTab ? 'overflow-y-auto lg:overflow-hidden lg:h-[calc(100dvh-8rem)] xl:h-[calc(100dvh-8.5rem)] px-3 pb-6 pt-2 sm:px-4 lg:px-6 lg:pb-3' : 'px-4 pb-12 sm:px-5 lg:px-6'}>
+        <div className={`mx-auto max-w-7xl ${isAuctionViewportTab ? 'flex flex-col lg:h-full lg:min-h-0' : ''}`}>
           {/* Dynamic Title */}
           <ContextualPageTitle activeTab={normalizedTab} summary={summary} auction={auction} compact={isAuctionViewportTab} />
 
@@ -1469,7 +1579,7 @@ const EventsPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -18 }}
               transition={{ duration: 0.24 }}
-              className={isAuctionViewportTab ? 'min-h-0 flex-1' : ''}
+              className={isAuctionViewportTab ? 'lg:min-h-0 lg:flex-1' : ''}
             >
               {renderTab()}
             </Motion.div>
