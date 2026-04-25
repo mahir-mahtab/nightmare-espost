@@ -85,7 +85,7 @@ const formatActivityTime = (value) => {
 
 const lotNameFromAuctionLot = (lot) => lot?.player?.name || lot?.playerName || lot?.playerId || 'Unknown player';
 
-const PLAYER_ROLE_OPTIONS = ['IGL', 'Support', 'Assaulter', 'Rusher'];
+const PLAYER_ROLE_OPTIONS = ['IGL', 'Support', 'Assaulter', 'Rusher', 'Entry_Fragger'];
 
 const toIsoDateTimeString = (value) => {
   const text = toText(value).trim();
@@ -223,7 +223,8 @@ const validatePlayerForm = (formData) => {
     return 'Player name must be 2-255 characters.';
   }
   if (!PLAYER_ROLE_OPTIONS.includes(toText(formData.role).trim())) {
-    return 'Player role must be one of: IGL, Support, Assaulter, Rusher.';
+    return 'Player role must be one of: IGL, Support, Assaulter, Rusher, Entry_Fragger.';
+
   }
   if (!rank || rank.length > 100) {
     return 'Rank must be 1-100 characters.';

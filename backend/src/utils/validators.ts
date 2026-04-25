@@ -4,7 +4,7 @@ const personNameRegex = /^.{1,100}$/;
 const teamNameRegex = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const eventIdOrSlugRegex = /^[A-Za-z0-9-]{3,120}$/;
 const cloudinaryFolderRegex = /^[A-Za-z0-9/_-]{1,120}$/;
-const playerRoleValues = ['IGL', 'Support', 'Assaulter', 'Rusher'] as const;
+const playerRoleValues = ['IGL', 'Support', 'Assaulter', 'Rusher', 'Entry_Fragger'] as const;
 const emailSchema = z.string().trim().email().max(255).transform((value) => value.toLowerCase());
 
 // Event validation schemas

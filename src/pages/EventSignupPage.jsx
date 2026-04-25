@@ -12,7 +12,7 @@ const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 const NAME_REGEX = /^.{1,100}$/;
 const TEAM_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,99}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_PLAYER_ROLES = ['IGL', 'Support', 'Assaulter', 'Rusher'];
+const VALID_PLAYER_ROLES = ['IGL', 'Support', 'Assaulter', 'Rusher', 'Entry_Fragger'];
 
 const getSignupUploadFolder = (eventId, role) => `${toTrimmed(eventId)}/signup/${role}`;
 

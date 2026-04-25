@@ -52,6 +52,7 @@ enum PlayerRole {
   Support
   Assaulter
   Rusher
+  Entry_Fragger
 }
 
 model Team {
