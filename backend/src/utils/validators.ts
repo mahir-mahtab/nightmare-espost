@@ -70,7 +70,7 @@ export const updatePlayerSchema = createPlayerSchema.partial().extend({
 export const createAuctionLotSchema = z.object({
   playerId: z.string().uuid(),
   status: z.enum(['PENDING', 'ACTIVE', 'SOLD', 'UNSOLD']).default('PENDING'),
-  endsAt: z.string().optional().refine((value) => {
+  endsAt: z.union([z.string(), z.null()]).optional().refine((value) => {
     if (!value) {
       return true;
     }
