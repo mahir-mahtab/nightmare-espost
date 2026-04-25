@@ -324,9 +324,9 @@ const AuctionHub = ({
   const focusedLotId = selectedAuctionId || auction.activeAuctionId;
 
   return (
-    <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(140deg,rgba(100,0,0,0.34),rgba(0,0,0,0.92)_62%)] p-2.5 sm:p-3 lg:p-4 lg:h-full lg:min-h-0 lg:overflow-hidden">
-      <div className="grid gap-3 lg:h-full lg:min-h-0 lg:grid-cols-[220px_minmax(0,1fr)_220px]">
-        <CyberCard className="hidden min-h-0 overflow-hidden p-3 lg:flex lg:flex-col" hover={false}>
+    <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(140deg,rgba(100,0,0,0.34),rgba(0,0,0,0.92)_62%)] p-2.5 sm:p-3 lg:p-4">
+      <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_220px]">
+        <CyberCard className="hidden p-3 lg:flex lg:flex-col lg:h-[600px] xl:h-[700px]" hover={false}>
           <div className="flex items-center justify-between gap-2">
             <p className="font-display text-lg font-black uppercase text-white">Players</p>
             <p className="text-[10px] font-bold tracking-[0.16em] text-white/45 uppercase">Queue</p>
@@ -344,8 +344,8 @@ const AuctionHub = ({
           </div>
         </CyberCard>
 
-        <CyberCard className="auction-main-panel min-h-0 overflow-hidden p-3 sm:p-4 lg:p-5" accent hover={false}>
-          <div className="flex h-full min-h-0 flex-col">
+        <CyberCard className="auction-main-panel p-3 sm:p-4 lg:p-5" accent hover={false}>
+          <div className="flex flex-col">
             {/* Player image + info — row on md+, column on mobile */}
             <div className="grid gap-3 sm:grid-cols-[140px_1fr] md:grid-cols-[180px_1fr]">
               <div className="relative w-full overflow-hidden rounded-xl border border-white/15 bg-black/70" style={{ aspectRatio: '4/3' }}>
@@ -487,7 +487,7 @@ const AuctionHub = ({
           </div>
         </CyberCard>
 
-        <CyberCard className="hidden min-h-0 overflow-hidden p-3 lg:flex lg:flex-col" hover={false}>
+        <CyberCard className="hidden p-3 lg:flex lg:flex-col lg:h-[600px] xl:h-[700px]" hover={false}>
           <div className="flex items-center justify-between gap-2">
             <p className="font-display text-lg font-black uppercase text-white">Owner</p>
             <p className="text-[10px] font-bold tracking-[0.16em] text-white/45 uppercase">Bidders</p>
@@ -1546,8 +1546,8 @@ const EventsPage = () => {
       showFooter={!isAuctionViewportTab}
       hideIntro={isAuctionViewportTab}
     >
-      <section className={isAuctionViewportTab ? 'overflow-y-auto lg:overflow-hidden lg:h-[calc(100dvh-8rem)] xl:h-[calc(100dvh-8.5rem)] px-3 pb-6 pt-2 sm:px-4 lg:px-6 lg:pb-3' : 'px-4 pb-12 sm:px-5 lg:px-6'}>
-        <div className={`mx-auto max-w-7xl ${isAuctionViewportTab ? 'flex flex-col lg:h-full lg:min-h-0' : ''}`}>
+      <section className={isAuctionViewportTab ? 'px-3 pb-6 pt-2 sm:px-4 lg:px-6 lg:pb-3' : 'px-4 pb-12 sm:px-5 lg:px-6'}>
+        <div className={`mx-auto max-w-7xl ${isAuctionViewportTab ? 'flex flex-col' : ''}`}>
           {/* Dynamic Title */}
           <ContextualPageTitle activeTab={normalizedTab} summary={summary} auction={auction} compact={isAuctionViewportTab} />
 
@@ -1579,7 +1579,7 @@ const EventsPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -18 }}
               transition={{ duration: 0.24 }}
-              className={isAuctionViewportTab ? 'lg:min-h-0 lg:flex-1' : ''}
+              className={isAuctionViewportTab ? 'flex-1' : ''}
             >
               {renderTab()}
             </Motion.div>
